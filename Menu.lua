@@ -27,10 +27,10 @@ local scriptstoload = {
         id = 205224386,
         link = base_url .. "205224386.lua"
     },
-    ["Apartment Hangout Spot"] = {
+    --[[["Apartment Hangout Spot"] = {
         id = 108873247414429,
         link = base_url .. "108873247414429.lua"
-    },
+    },--]]
     ["The Lanes"] = {
         id = 1333478699,
         link = base_url .. "1333478699.lua"
