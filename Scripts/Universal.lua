@@ -1,18 +1,3 @@
-    -- This project was too much to handle and I don't want to have my life interrupted by thousands of users looking for support all day everyday, interrupts my real life ultimately.
-    -- This project/script hub was originally supposed to only be for MIC UP, as you could probably tell by old comments in this script, but I had plans to branch out more to universal games, when ultimately, I got tired of everything and everyone, and dropped it entirely, to go outside btw (you should try it twin).
-    -- If you think for 5 seconds that this script is an IP grabber of some sort, there is literally 0 protection in this script hub, everything is open sourced, put it in ChatGPT, he'll tell you the same damn thing, I don't give a shit about logging, I only still have this up as a learning tool, I don't even fucking use it anymore (I never did).
-    -- People claim this was wrote with ChatGPT, if you believe it was wrote with ChatGPT go test it, but it's 16K lines of code, why would any of this junk be wrote with ChatGPT? this mother-fucker can't even handle 800 lines of code.
-    -- This code is VERY unorganized and garbage unfortunately, I don't know what the FUCK I was doing with this code, but I must have been high when writing it, but I am NOT re-writing any of this code, fuck that shit, I'll just slowly patch up everything that looks or acts broken.
-    -- Enjoy it anyway, I never actually cared for this script hub, but I did write it so, and it's sort of stable, barely has issues, and supports every executor, so I still keep up as like a learning tool for people who don't know how to code, they can check out this script hub and go over it and see what they can do.
-    -- I might fix the code up more as time goes on, but I haven't worked on this shit in quite some time, check the updates, we'll see what actually starts working again.
-    -- Also, any other script hub with my features, are just skids, this script came out before ANY of the other MIC UP scripts did, this script actually, REALISTICALLY, was supposed to be released all the way the fuck back in like March of 2024, but I had plans for other scripts for other games at that time.
-    -- But I see a lot of scripts that have my features, and sure enough, they are obfuscated, and seem to work JUST how mine work, that's fucking suspicious, don't you think?
-    -- I wrote this script myself, don't believe me? cry about it, stop hating and try and replicate this script hub, see what ChatGPT or AI tells you, only retards use AI, but the reason why it would even test positive is due to the amount of comments I left in the script for beginners, not written by AI, but I have to admit, scripting in Roblox is fairly easy, and doesn't take much skill, unlike languages like C# that might take a bit more time to learn or JavaScript, or even Java.
-    -- But despite all this, our Flames Hub - API has been successfully and OFFICIALLY released and is no longer in BETA.
-    -- Stay tuned, even though I genuinely quit and don't really (actively) maintain project anymore, also because it has everything and I cannot think of anything more to add to it, I've literally got everything, plus, I don't want to add more, I can't open this file without it wiping my memory.
-    -- I only have 16GB of memory, not 64GB for fucking crying out loud, give me a fucking break.
-    -- And don't think for 5 seconds that I'm gonna change the notification system, because there is TOO many notifications on here that I'd have to go around and correct, and I am NOT doing that.
-
     -- [[ Initialize new FlamesLibrary system. ]] --
     -- [[ say hello to Flames Hub newest innovation, global framework caching and servicing. ]] --
     if not getgenv().GlobalEnvironmentFramework_Initialized then -- new
@@ -380,7 +365,7 @@
         --Module:Destroy_Script()
         task.wait(0.3)
         -- Then obviously just re-runs down here if the script failed a load last time. --
-        loadstring(game:HttpGet(""))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Scripts/Universal.lua"))()
     end
     wait(0.2)
     if response and response.StatusCode == 200 and response ~= nil then
@@ -785,7 +770,7 @@
     end--]]
     
     if getgenv().advanced_workaround_method == false and getmetatable and setmetatable and hookmetamethod and hookfunction then -- forgot why I had this lmfao.
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EnterpriseExperience/ParadiseRPScript/refs/heads/main/quick_workaround_rspy.lua'))()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Remote_Spy.lua'))()
         wait(0.1)
         getgenv().advanced_workaround_method = true
     elseif not (getmetatable or setmetatable or hookmetamethod or hookfunction) then
@@ -1028,29 +1013,6 @@
         getgenv().do_baseplate_check()
         getgenv().passed_baseplate_check = true
     end
-    wait(0.2)
-    if getgenv().emotes_bypassed then
-        warn("Emotes are already bypassed.")
-    else
-        if getgenv().notify then
-            getgenv().notify("Success", "Bypassing emotes...", 15)
-        else
-            print("Bypassing emotes...")
-        end
-        getgenv().FlamesLibrary.spawn("emote_bypass_loader", "spawn", function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/Emote_Bypass_Script.lua"))()
-        end)
-        getgenv().emotes_bypassed = true
-        task.wait(1)
-        if getgenv().emotes_bypassed then
-            if getgenv().notify then
-                getgenv().FlamesLibrary.disconnect("emote_bypass")
-                getgenv().notify("Success", "All emotes are bypassed and are ready for use!", 5)
-            else
-                print("Emotes have been bypassed and are ready for use.")
-            end
-        end
-    end
     wait(0.5)
     local TextChatService = getgenv().TextChatService or getgenv().Service_Wrap("TextChatService")
     local TextChannels
@@ -1197,7 +1159,7 @@
 
     for attempt = 1, MAX_ATTEMPTS do
         local success, result = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/GetUILibrary"))()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Rayfield_UI.lua"))()
         end)
 
         if success and result then
@@ -1216,7 +1178,7 @@
     wait(0.5)
     getgenv().Is_ActivelyIgnoring_NotAllowing_Notifications_Flames_Hub = false
     getgenv().Is_ActivelyIgnoring_NotAllowing_Notifications_Flames_Hub = getgenv().Is_ActivelyIgnoring_NotAllowing_Notifications_Flames_Hub or false
-    local NotifyLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/Notification_Lib.lua"))()
+    local NotifyLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Notify_Lib.lua"))()
     getgenv().NotifyLib = NotifyLib
     local valid_titles = {success="Success",info="Info",warning="Warning",error="Error",succes="Success",sucess="Success",eror="Error",erorr="Error",warnin="Warning"}
     getgenv().format_title = function(str)
@@ -1824,7 +1786,7 @@
     getgenv().LocalPlayer.OnTeleport:Connect(function(State)
         if (not getgenv().TeleportCheck) and getgenv().queueteleport then
             getgenv().TeleportCheck = true
-            queueteleport("loadstring(game:HttpGet(('https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/retrieve_branch_version.lua')))()")
+            queueteleport("loadstring(game:HttpGet(('https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Scripts/Universal.lua')))()")
         end
     end)
     wait(0.2)
@@ -2435,16 +2397,16 @@
         warn("Did not load Booth's stuff [1].")
     end
 
-    if game.PlaceId == 6884319169 or game.PlaceId == 15546218972 then
+    -- [[ This doesn't work anymore. ]] --
+    --[[if game.PlaceId == 6884319169 or game.PlaceId == 15546218972 then
         getgenv().FreeReanimationGUI = Tab1:CreateButton({
         Name = "Free Reanimations GUI (Best Anim Speed = 110-125)",
         Callback = function()
             loadstring(game:HttpGet('https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/OpenSource_Reanim_Free.lua'))()
         end,})
-    end
+    end--]]
 
-    local esplib = loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/esp_library.lua"))()
-
+    local esplib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/ESP_Library.lua"))()
     getgenv().AntiVoidPlayer = Tab2:CreateToggle({
     Name = "Anti Void Baseplate (Goes under Character)",
     CurrentValue = getgenv().keepMyPlateOn or false,
@@ -4051,7 +4013,7 @@
     end
     task.wait(0.1)
     getgenv().disable_ice_watcher = disable_ice_watcher
-    getgenv().AddAutoAntiIceJailCell = Tab16:CreateButton({
+    --[[getgenv().AddAutoAntiIceJailCell = Tab16:CreateButton({
     Name = "Auto-Run Anti Ice/Jail (Leave manually to stop)",
     Callback = function()
         if getgenv().Loaded_Check_For_Anti_Ice_Jail then
@@ -4070,7 +4032,7 @@
                 queueteleport("loadstring(game:HttpGet(('https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/Anti_Ice_Jail_HDAdmin.lua')))()")
             end
         end))
-    end,})
+    end,})--]]
 
     getgenv().AntiJailCell = Tab16:CreateToggle({
     Name = "Anti Jail Cell (HD Admin)",
@@ -7755,20 +7717,137 @@
         warn("Did not load this Booth tab [7].")
     end
 
+    local Lighting = cloneref and cloneref(game:GetService("Lighting")) or game:GetService("Lighting")
+    getgenv().Graphics_Enhancer_Active = getgenv().Graphics_Enhancer_Active or false
+    getgenv().Graphics_Enhancer_Original = getgenv().Graphics_Enhancer_Original or nil
+    getgenv().Graphics_Enhancer_Instances = getgenv().Graphics_Enhancer_Instances or nil
+    local settings_preset = {
+        Ambient = Color3.fromRGB(90, 90, 90),
+        OutdoorAmbient = Color3.fromRGB(140, 140, 140),
+        Brightness = 3,
+        ExposureCompensation = 0.2,
+        ColorShift_Top = Color3.fromRGB(255, 255, 255),
+        ColorShift_Bottom = Color3.fromRGB(255, 255, 255),
+        GlobalShadows = true,
+        ShadowSoftness = 0.15,
+        FogEnd = 100000,
+        ColorCorrection_Brightness = 0.03,
+        ColorCorrection_Contrast = 0.15,
+        ColorCorrection_Saturation = 0.2,
+        ColorCorrection_TintColor = Color3.fromRGB(255, 250, 245),
+        Bloom_Intensity = 0.4,
+        Bloom_Size = 24,
+        Bloom_Threshold = 1.6,
+        SunRays_Intensity = 0.15,
+        SunRays_Spread = 0.5,
+    }
+
+    local function capture_original_lighting()
+        return {
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            Brightness = Lighting.Brightness,
+            ExposureCompensation = Lighting.ExposureCompensation,
+            ColorShift_Top = Lighting.ColorShift_Top,
+            ColorShift_Bottom = Lighting.ColorShift_Bottom,
+            GlobalShadows = Lighting.GlobalShadows,
+            ShadowSoftness = Lighting.ShadowSoftness,
+            FogEnd = Lighting.FogEnd,
+        }
+    end
+
+    local function build_post_effects()
+    local color_correction = Instance.new("ColorCorrectionEffect")
+    color_correction.Name = "Graphics_Enhancer_ColorCorrection"
+    color_correction.Brightness = settings_preset.ColorCorrection_Brightness
+    color_correction.Contrast = settings_preset.ColorCorrection_Contrast
+    color_correction.Saturation = settings_preset.ColorCorrection_Saturation
+    color_correction.TintColor = settings_preset.ColorCorrection_TintColor
+    color_correction.Parent = Lighting
+
+    local bloom = Instance.new("BloomEffect")
+    bloom.Name = "Graphics_Enhancer_Bloom"
+    bloom.Intensity = settings_preset.Bloom_Intensity
+    bloom.Size = settings_preset.Bloom_Size
+    bloom.Threshold = settings_preset.Bloom_Threshold
+    bloom.Parent = Lighting
+
+    local sun_rays = Instance.new("SunRaysEffect")
+    sun_rays.Name = "Graphics_Enhancer_SunRays"
+    sun_rays.Intensity = settings_preset.SunRays_Intensity
+    sun_rays.Spread = settings_preset.SunRays_Spread
+    sun_rays.Parent = Lighting
+
+    return {
+        color_correction = color_correction,
+        bloom = bloom,
+        sun_rays = sun_rays,
+    }
+    end
+
+    local function destroy_post_effects(instances)
+        if not instances then return end
+        for _, inst in pairs(instances) do
+            if inst and inst.Parent then
+                inst:Destroy()
+            end
+        end
+    end
+
+    getgenv().Toggle_Graphics_Enhancer = function(state)
+        if state == getgenv().Graphics_Enhancer_Active then return false, "already_in_requested_state" end
+        if state then
+            getgenv().Graphics_Enhancer_Original = capture_original_lighting()
+            Lighting.Ambient = settings_preset.Ambient
+            Lighting.OutdoorAmbient = settings_preset.OutdoorAmbient
+            Lighting.Brightness = settings_preset.Brightness
+            Lighting.ExposureCompensation = settings_preset.ExposureCompensation
+            Lighting.ColorShift_Top = settings_preset.ColorShift_Top
+            Lighting.ColorShift_Bottom = settings_preset.ColorShift_Bottom
+            Lighting.GlobalShadows = settings_preset.GlobalShadows
+            Lighting.ShadowSoftness = settings_preset.ShadowSoftness
+            Lighting.FogEnd = settings_preset.FogEnd
+
+            getgenv().Graphics_Enhancer_Instances = build_post_effects()
+            getgenv().Graphics_Enhancer_Active = true
+            if getgenv().notify then getgenv().notify("Success", "Graphics Enhancer is now enabled.", 3) end
+        else
+            local original = getgenv().Graphics_Enhancer_Original
+            if original then
+                for prop, value in pairs(original) do
+                    Lighting[prop] = value
+                end
+            end
+
+            destroy_post_effects(getgenv().Graphics_Enhancer_Instances)
+            getgenv().Graphics_Enhancer_Instances = nil
+            getgenv().Graphics_Enhancer_Original = nil
+            getgenv().Graphics_Enhancer_Active = false
+            if getgenv().notify then getgenv().notify("Info", "Graphics Enhancer is now disabled.", 5) end
+        end
+
+        return true
+    end
+
+    getgenv().Set_Graphics_Enhancer_Value = function(key, value)
+        if settings_preset[key] == nil then return false, "unknown_setting" end
+        settings_preset[key] = value
+        if getgenv().Graphics_Enhancer_Active then
+            getgenv().Toggle_Graphics_Enhancer(false)
+            getgenv().Toggle_Graphics_Enhancer(true)
+        end
+
+        return true
+    end
+
     getgenv().GraphicsEnhancer = Tab9:CreateToggle({
     Name = "Graphics Enhancer",
-    CurrentValue = getgenv().graphics_upper or false,
+    CurrentValue = getgenv().Graphics_Enhancer_Active or false,
     Flag = "GraphicsEnhancerToggling",
     Callback = function(new_graphics_toggle)
-        if new_graphics_toggle then
-            wait(1)
-            getgenv().graphics_upper = true
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/PublicScriptsOnRobloxExploiting/refs/heads/main/GraphicsEnhancer.lua"))()
-        else
-            wait(0.5)
-            getgenv().graphics_upper = false
-            wait(0.1)
-            getgenv().reset_lighting_settings()
+        local success, reason = getgenv().Toggle_Graphics_Enhancer(new_graphics_toggle)
+        if not success and reason ~= "already_in_requested_state" then
+            if getgenv().notify then getgenv().notify("Error", "Graphics Enhancer failed: " .. tostring(reason), 5) end
         end
     end,})
 
@@ -7781,7 +7860,6 @@
 
         if state then
             getgenv().FlamesLibrary.disconnect("ctrl_click_tp")
-
             local uis = getgenv().UserInputService or cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
             local mouse = getgenv().LocalPlayer:GetMouse() or game.Players.LocalPlayer:GetMouse()
             local function get_character()
@@ -10366,7 +10444,8 @@
         end
     end,})
 
-    getgenv().GetFakeChatGUI = Tab4:CreateButton({
+    -- [[ So old it doesn't even work anymore lmao. ]] --
+    --[[getgenv().GetFakeChatGUI = Tab4:CreateButton({
     Name = "Fake Chat GUI",
     Callback = function()
         if getgenv().FakeChat_Loaded then
@@ -10378,7 +10457,7 @@
         else
             warn("Unknown operation/nil or bad call occurred.")
         end
-    end,})
+    end,})--]]
 
     if game.PlaceId == 6884319169 or game.PlaceId == 15546218972 then
         getgenv().inputBypassTextBooth = Tab11:CreateInput({
@@ -11353,7 +11432,7 @@
             return getgenv().notify("Warning", "Infinite Premium is already loaded.", 6)
         end
 
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EnterpriseExperience/crazyDawg/main/InfYieldOther.lua'))()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Infinite_Premium.lua'))()
     end,})
 
     getgenv().InfYield_Regular = Tab5:CreateButton({
@@ -12249,7 +12328,7 @@
         else
             getgenv().notify("Success", "Press the green [F] on the left side of your screen to open/toggle.", 15)
         end
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/MicUpSource/refs/heads/main/flames_emotes_gui_new.lua"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Emotes_Backup.lua"))()
     end,})
 
     getgenv().MuteAllBruh = Tab21:CreateToggle({
@@ -13907,8 +13986,8 @@
     getgenv().SystemBroken = Tab5:CreateButton({
     Name = "System Broken",
     Callback = function()
-        -- I modified this whole shit myself, people have copied my System Broken, and to that I say, go to hell!
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/SystemBroken/refs/heads/main/source"))()
+        -- [[ I modified this whole shit myself, people have copied my System Broken, and to that I say, go to hell! ]] --
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/System_Broken.lua"))()
     end,})
     wait()
     getgenv().Trip_Settings = {
@@ -14702,26 +14781,18 @@
     wait(0.2)
     print("Getting Requirements... [1 moment.]")
     wait(0.3)
-    if not getgenv().not_loaded_checker_notifier then
+    --[[if not getgenv().not_loaded_checker_notifier then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/PrivateBecauseYes/refs/heads/main/armsConvert.js", true))()
         wait()
         getgenv().not_loaded_checker_notifier = true
     else
         warn("Already loaded check notifier!")
-    end
+    end--]]
     wait(0.2)
     if getgenv().SimpleSpyExecuted then
         getgenv().SimpleSpyShutdown()
     else
         warn("SneakySpy is not running!")
-    end
-    wait()
-    if getgenv().performance_stats then
-        warn("Performance stats checked.")
-    else
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/EnterpriseExperience/OrionLibraryReWrittenCelery/refs/heads/main/grab_file_performance"))()
-        wait(0.1)
-        getgenv().performance_stats = true
     end
     wait(0.1)
     TerrainFolder = getgenv().Workspace:FindFirstChild("TERRAIN_EDITOR") or Instance.new("Folder", Workspace)
