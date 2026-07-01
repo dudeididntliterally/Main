@@ -14870,7 +14870,7 @@ local function Notify(msg, dur)
     end)
 end
 
-g.lta_updater_running = g.lta_updater_running or false
+--[[g.lta_updater_running = g.lta_updater_running or false
 g.lta_updater_thread_id = (g.lta_updater_thread_id or 0) + 1
 local thread_id = g.lta_updater_thread_id
 if not g.lta_updater_running then
@@ -14888,10 +14888,6 @@ if not g.lta_updater_running then
                 continue
             end
 
-            -- [[ for debugging. ]] --
-            --print_bytes("local_version", local_version)
-            --print_bytes("remote_version", remote_version)
-
             if remote_version ~= local_version then
                 g.lta_updater_running = false
                 Notify("[UPDATE DETECTED]:\nLocal: " .. local_version .. "\nServer: " .. remote_version .. "\nReloading...", 6)
@@ -14906,4 +14902,4 @@ if not g.lta_updater_running then
             end
         end
     end)
-end
+end--]]
