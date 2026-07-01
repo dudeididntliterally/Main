@@ -1901,7 +1901,6 @@ local function handleCommand(sender, message)
 
    local prefix = tostring(getgenv().AdminPrefix or "-")
    if message:sub(1, #prefix):lower() ~= prefix:lower() then return end
-
    local function levenshtein(s, t)
       if s == t then return 0 end
       local len_s, len_t = #s, #t
@@ -2060,7 +2059,40 @@ local function handleCommand(sender, message)
 end
 wait(0.5)
 getgenv().handleCommand = handleCommand
+getgenv().ChatMessageHooks = getgenv().ChatMessageHooks or {}
+local TextChatService = cloneref and cloneref(game:GetService("TextChatService")) or game:GetService("TextChatService")
+local Players = cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
+local function get_general_channel()
+   local channels = TextChatService:FindFirstChild("TextChannels")
+   if not channels then return nil, "no_text_channels" end
+   local general = channels:FindFirstChild("RBXGeneral")
+   if not general then return nil, "no_general_channel" end
+   return general
+end
 
+getgenv().Setup_Chat_Command_Listener = function()
+   if getgenv().Chat_MessageReceived_Connection then
+      getgenv().Chat_MessageReceived_Connection:Disconnect()
+      getgenv().Chat_MessageReceived_Connection = nil
+   end
+   wait(0.25)
+   local general, err = get_general_channel()
+   if not general then
+      return false, err
+   end
+
+   local local_player = getgenv().LocalPlayer or Players.LocalPlayer
+   getgenv().Chat_MessageReceived_Connection = general.MessageReceived:Connect(function(msg)
+      if not msg.TextSource then return end
+      if msg.TextSource.UserId ~= local_player.UserId then return end
+
+      handleCommand(local_player, msg.Text)
+   end)
+
+   return true
+end
+
+getgenv().Setup_Chat_Command_Listener()
 getgenv().global_isinchat_msghooks = function(func)
    for _, v in ipairs(getgenv().ChatMessageHooks) do
       if v == func then
@@ -2072,10 +2104,6 @@ end
 
 getgenv().handle_chattercommands = function(sender, msg)
    handleCommand(sender, msg.Text)
-
-   if sender and sender.UserId == getgenv().LocalPlayer.UserId then
-      getgenv().TextChatServiceAPI.Handle_Message(sender, tostring(msg.Text))
-   end
 end
 
 if not global_isinchat_msghooks(handle_chattercommands) then
@@ -2213,6 +2241,7 @@ getgenv().Script_Version_Finding_Main_Updater_Loop_Task = getgenv().Script_Versi
          getgenv().Berry_Ave_Admin_Loaded = false
          task.wait(2)
          loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Experiences/8481844229.lua"))()
+
          break
       end
    end
