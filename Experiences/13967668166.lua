@@ -2913,7 +2913,6 @@ local title_allowed_list_tbl = {
     ["jdot7580"] = "Staff",
     ["ddosama136703"] = "Staff",
     ["AuraWithClipFarmin"] = "Owner",
-    ["mya120059"] = "Wifey"
 }
 local GlobalEnv_Framework = load_script("GlobalEnv_Framework")
 local Life_Together_Network = load_script("Life_Together_Network")
