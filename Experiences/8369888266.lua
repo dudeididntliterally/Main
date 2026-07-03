@@ -1136,6 +1136,7 @@ g.vehicle_speed_boost_toggle = g.vehicle_speed_boost_toggle or function(toggled)
 			while g.vehicle_speed_boost_active do
 				if not current_vehicle or not current_vehicle.Parent or not DriveSeat.Parent then
 					g.vehicle_speed_boost_active = false
+					if g.flames_custom_vehicle_speed_boost_switch_UI then g.flames_custom_vehicle_speed_boost_switch_UI:Set(false, false) end
 					break
 				end
 
