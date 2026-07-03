@@ -78,6 +78,10 @@ local scriptstoload = {
     ["Car Zone"] = {
         id = 80200604311136,
         link = base_url .. "80200604311136.lua"
+    },
+    ["Redcliff City RP"] = {
+        id = 8369888266,
+        link = base_url .. "8369888266.lua"
     }
 }
 
