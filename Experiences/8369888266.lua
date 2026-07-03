@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.5"
+local Raw_Version = "V1.1.7"
 g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -210,6 +210,13 @@ g.npc_asset_ids = {
 	"rbxassetid://9504554007",
 	"rbxassetid://9504552648",
 	"rbxassetid://9504546803",
+}
+
+g.carry_player_options = {
+	"Carry2",
+	"Piggyback",
+	"Shoulder",
+	"Carry1",
 }
 
 if not g.LocalPlayer then g.notify("Warning", "g.LocalPlayer missing or has not been created yet, creating...", 10) end
@@ -1196,10 +1203,55 @@ g.send_random_posts_spammer = g.send_random_posts_spammer or function(state)
 	end
 end
 
+g.spam_carry_requests_all_options = g.spam_carry_requests_all_options or function(state, target)
+	if state == true then
+		if g.spam_carry_requests_every_option then return end
+		local remote, err = g.get_remote("PlayersService", "RE", "RequestCarryPlayer")
+		if not remote or not remote:IsA("RemoteEvent") then
+			if g.spam_request_carry_UI_toggle then g.spam_request_carry_UI_toggle:Set(false, false) end
+			return g.notify("Error", "RemoteEvent: RequestCarryPlayer does not exist or is not a RemoteEvent!", 5)
+		end
+
+		local resolved_target = target or g.request_carry_spam_plr_target
+		if not resolved_target then
+			if g.spam_request_carry_UI_toggle then g.spam_request_carry_UI_toggle:Set(false, false) end
+			return g.notify("Error", "Player not found or they have left the game.", 5)
+		end
+
+		g.spam_carry_requests_every_option = true
+		if g.notify then g.notify("Success", "Carry Request Spammer is now enabled.", 1.5) end
+		g.FlamesLibrary.spawn("spam_carry_requests_loop", "spawn", function()
+			while g.spam_carry_requests_every_option do
+				task.wait(0)
+				local current_target = target or g.request_carry_spam_plr_target
+				if not current_target or not current_target.Parent then
+					g.spam_carry_requests_every_option = false
+					if g.spam_request_carry_UI_toggle then g.spam_request_carry_UI_toggle:Set(false, false) end
+					if g.notify then g.notify("Error", "Target left the game, spammer stopped.", 5) end
+					break
+				end
+
+				local carry_option = g.carry_player_options[math.random(#g.carry_player_options)]
+				local ok, fire_err = pcall(function()
+					remote:FireServer(current_target, carry_option)
+				end)
+				if not ok then
+					g.notify("Error", "spam_carry_requests_all_options FireServer error: "..tostring(fire_err), 5)
+				end
+			end
+		end)
+	elseif state == false then
+		g.spam_carry_requests_every_option = false
+		if g.notify then g.notify("Success", "Carry Request Spammer is now disabled.", 5) end
+	else
+		return
+	end
+end
+
 g.toggle_rainbow_character_color = g.toggle_rainbow_character_color or function() g.rainbow_character_color_toggled(not g.rainbow_char_color_enabled) end
 g.toggle_noclip_for_character = g.toggle_noclip_for_character or function() g.noclip_for_character(not g.noclip_on_char_enabled) end
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Apple_UI_Library.lua"))()
-local window = library:init("Redcliff City RP", true, Enum.KeyCode.RightShift, true)
+local window = library:init("RedCliff RP | "..tostring(getgenv().Script_Version), true, Enum.KeyCode.RightShift, true)
 window:Divider("Main")
 local Main = window:Section("Home")
 window:Divider("LocalPlayer")
@@ -1290,6 +1342,23 @@ end)
 
 Vehicle:Slider("Min Turn Angle Multiplier", 0.1, 1, g.vehicle_speed_boost_min_yaw_mult or 0.35, 2, function(value)
 	g.vehicle_speed_boost_min_yaw_mult = value
+end)
+
+g.request_carry_spam_plr_target = nil
+Main:TextField("Carry Spam Plr", "User/Display", function(target)
+	local targ = g.findplr(target)
+	if not targ then return notify("Error", "Target not found or they have left the game.", 5) end
+	g.request_carry_spam_plr_target = targ
+	if g.notify then g.notify("Success", "Set Target: "..tostring(targ.Name), 5) end
+end)
+
+g.spam_request_carry_UI_toggle = Main:Switch("Request Carry Spam (FE)", g.spam_carry_requests_every_option or false, function(state)
+	if not g.request_carry_spam_plr_target then
+		g.spam_carry_requests_every_option = false
+		if g.spam_request_carry_UI_toggle then g.spam_request_carry_UI_toggle:Set(false, false) end
+		return g.notify("Error", "Not a valid player, please use the above input to set a target.", 6)
+	end
+	g.spam_carry_requests_all_options(state, g.request_carry_spam_plr_target)
 end)
 
 Main:Switch("Posts Spammer (FE)", g.spamming_random_posts_redcliff_phone or false, function(state)
