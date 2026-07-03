@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.4"
+local Raw_Version = "V1.1.5"
 g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -1117,77 +1117,61 @@ g.vehicle_speed_boost_toggle = g.vehicle_speed_boost_toggle or function(toggled)
 			if g.flames_custom_vehicle_speed_boost_switch_UI then g.flames_custom_vehicle_speed_boost_switch_UI:Set(false) end
 			return g.notify("Error", "No VehicleSeat found.", 5)
 		end
-		local Player = g.LocalPlayer or g.Players.LocalPlayer or cloneref(game:GetService("Players")).LocalPlayer
-		local Current_Speed = 0
-		local S_Hold_Start = nil
-		local Is_Mobile = g.UserInputService.TouchEnabled or cloneref(game:GetService("UserInputService")).TouchEnabled
-		local BV = DriveSeat:FindFirstChild("FlamesSpeedBoost") or Instance.new("BodyVelocity")
-		BV.Name = "FlamesSpeedBoost"
-		BV.MaxForce = Vector3.new(9e9, 0, 9e9)
-		BV.Velocity = Vector3.new(0, 0, 0)
-		BV.Parent = DriveSeat
-		local BG = DriveSeat:FindFirstChild("FlamesSpeedGyro") or Instance.new("BodyGyro")
-		BG.Name = "FlamesSpeedGyro"
-		BG.P = 9e4
-		BG.MaxTorque = Vector3.new(0, 9e9, 0)
-		BG.CFrame = DriveSeat.CFrame
-		BG.Parent = DriveSeat
+
+		g.vehicle_speed_boost_original_attrs = {
+			MaxForwardSpeed = current_vehicle:GetAttribute("MaxForwardSpeed"),
+			CurrentMaxForwardSpeed = current_vehicle:GetAttribute("CurrentMaxForwardSpeed"),
+			DefaultMaxReverseSpeed = current_vehicle:GetAttribute("DefaultMaxReverseSpeed"),
+			Traction = current_vehicle:GetAttribute("Traction"),
+			MaxWheelYawAngle = current_vehicle:GetAttribute("MaxWheelYawAngle"),
+			AccelerationTime = current_vehicle:GetAttribute("AccelerationTime"),
+		}
+		g.vehicle_speed_boost_target = current_vehicle
+		local Original_Traction = g.vehicle_speed_boost_original_attrs.Traction or 150
+		local Original_Yaw_Angle = g.vehicle_speed_boost_original_attrs.MaxWheelYawAngle or 30
 		g.vehicle_speed_boost_active = true
-		g.vehicle_speed_boost_max_forward = g.vehicle_speed_boost_max_forward or 425
-		g.vehicle_speed_boost_max_backward = g.vehicle_speed_boost_max_backward or 125
-		g.vehicle_speed_boost_acceleration = g.vehicle_speed_boost_acceleration or 10
 		if g.notify then g.notify("Success", "Vehicle Speed Boost is now enabled.", 1.5) end
-		g.FlamesLibrary.spawn("vehicle_speed_boost_loop", "spawn", function()
+
+		g.FlamesLibrary.spawn("vehicle_speed_boost_tuning_loop", "spawn", function()
 			while g.vehicle_speed_boost_active do
-				if not current_vehicle or not current_vehicle.Parent then
+				if not current_vehicle or not current_vehicle.Parent or not DriveSeat.Parent then
 					g.vehicle_speed_boost_active = false
-					if g.Apply_Best_Vehicle_Settings then g.Apply_Best_Vehicle_Settings:Set({CurrentValue = false}) end
 					break
 				end
-				local Max_Forward_Speed = g.vehicle_speed_boost_max_forward or 425
-				local Max_Backward_Speed = g.vehicle_speed_boost_max_backward or 125
-				local Acceleration = g.vehicle_speed_boost_acceleration or 10
-				local Throttle = DriveSeat.Throttle
-				if Is_Mobile then
-					local ControlModule = require(Player.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule"))
-					local Direction = ControlModule:GetMoveVector()
-					Throttle = -Direction.Z
-				end
-				if Throttle > 0 then
-					S_Hold_Start = nil
-					Current_Speed = math.min(Current_Speed + Acceleration, Max_Forward_Speed)
-					BV.Velocity = DriveSeat.CFrame.LookVector * Current_Speed
-					BG.CFrame = DriveSeat.CFrame
-				elseif Throttle < 0 then
-					if not S_Hold_Start then S_Hold_Start = tick() end
-					if tick() - S_Hold_Start >= 0.45 then
-						Current_Speed = math.max(Current_Speed - Acceleration, -Max_Backward_Speed)
-						BV.Velocity = DriveSeat.CFrame.LookVector * Current_Speed
-					else
-						Current_Speed = math.max(Current_Speed - Acceleration * 3, 0)
-						BV.Velocity = DriveSeat.CFrame.LookVector * Current_Speed
-					end
-				else
-					S_Hold_Start = nil
-					Current_Speed = math.max(Current_Speed - Acceleration * 2, 0)
-					BV.Velocity = DriveSeat.CFrame.LookVector * Current_Speed
-				end
-				task.wait(0.03)
+
+				local Boosted_Forward = g.vehicle_speed_boost_max_forward or 250
+				local Boosted_Backward = -(g.vehicle_speed_boost_max_backward or 100)
+				local Accel_Time = g.vehicle_speed_boost_acceleration_time or 0.1
+				current_vehicle:SetAttribute("MaxForwardSpeed", Boosted_Forward)
+				current_vehicle:SetAttribute("CurrentMaxForwardSpeed", Boosted_Forward)
+				current_vehicle:SetAttribute("DefaultMaxReverseSpeed", Boosted_Backward)
+				current_vehicle:SetAttribute("AccelerationTime", Accel_Time)
+				local Current_Speed = DriveSeat.AssemblyLinearVelocity.Magnitude
+				local Speed_Ratio = math.clamp(Current_Speed / Boosted_Forward, 0, 1)
+				local Max_Traction_Mult = g.vehicle_speed_boost_max_traction_mult or 3.5
+				local Traction_Mult = 1 + (Max_Traction_Mult - 1) * Speed_Ratio
+				current_vehicle:SetAttribute("Traction", Original_Traction * Traction_Mult)
+				local Min_Yaw_Mult = g.vehicle_speed_boost_min_yaw_mult or 0.35
+				local Yaw_Mult = 1 - (1 - Min_Yaw_Mult) * Speed_Ratio
+				current_vehicle:SetAttribute("MaxWheelYawAngle", Original_Yaw_Angle * Yaw_Mult)
+				task.wait(0.1)
 			end
-			BV:Destroy()
-			BG:Destroy()
 		end)
 	elseif toggled == false then
 		g.vehicle_speed_boost_active = false
-		local current_vehicle = g.get_vehicle()
-		if not current_vehicle then return end
-		local DriveSeat = current_vehicle:FindFirstChild("VehicleSeat", true)
-		if not DriveSeat then return end
-		local BV = DriveSeat:FindFirstChild("FlamesSpeedBoost")
-		local BG = DriveSeat:FindFirstChild("FlamesSpeedGyro")
-		if BV then BV:Destroy() end
-		if BG then BG:Destroy() end
+		local current_vehicle = g.vehicle_speed_boost_target or g.get_vehicle()
+		if current_vehicle and g.vehicle_speed_boost_original_attrs then
+			for attr_name, value in pairs(g.vehicle_speed_boost_original_attrs) do
+				if value ~= nil then
+					current_vehicle:SetAttribute(attr_name, value)
+				end
+			end
+		end
+		g.vehicle_speed_boost_original_attrs = nil
+		g.vehicle_speed_boost_target = nil
 		if g.notify then g.notify("Success", "Vehicle Speed Boost is now disabled.", 1.5) end
+	else
+		return 
 	end
 end
 
@@ -1283,7 +1267,7 @@ g.spam_npcs_switch_toggle_UI = Main:Switch("Random NPCs (FE)", g.spawning_random
 	g.spawn_npcs_flasher(state)
 end)
 
-g.flames_custom_vehicle_speed_boost_switch_UI = Vehicle:Switch("Vehicle Boost (FE) (broken)", g.vehicle_speed_boost_active or false, function(state)
+g.flames_custom_vehicle_speed_boost_switch_UI = Vehicle:Switch("Vehicle Boost (FE)", g.vehicle_speed_boost_active or false, function(state)
 	g.vehicle_speed_boost_toggle(state)
 end)
 
