@@ -1280,8 +1280,16 @@ Vehicle:Slider("Speed Boost Max Backward", 25, 250, g.vehicle_speed_boost_max_ba
 	g.vehicle_speed_boost_max_backward = value
 end)
 
-Vehicle:Slider("Speed Boost Acceleration", 1, 50, g.vehicle_speed_boost_acceleration or 10, function(value)
-	g.vehicle_speed_boost_acceleration = value
+Vehicle:Slider("Acceleration Time", 0.02, 1, g.vehicle_speed_boost_acceleration_time or 0.1, 2, function(value)
+	g.vehicle_speed_boost_acceleration_time = value
+end)
+
+Vehicle:Slider("Max Traction Multiplier", 1, 6, g.vehicle_speed_boost_max_traction_mult or 3.5, 1, function(value)
+	g.vehicle_speed_boost_max_traction_mult = value
+end)
+
+Vehicle:Slider("Min Turn Angle Multiplier", 0.1, 1, g.vehicle_speed_boost_min_yaw_mult or 0.35, 2, function(value)
+	g.vehicle_speed_boost_min_yaw_mult = value
 end)
 
 Main:Switch("Posts Spammer (FE)", g.spamming_random_posts_redcliff_phone or false, function(state)
