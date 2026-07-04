@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.7"
+local Raw_Version = "V1.1.8"
 g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -338,6 +338,114 @@ end
 g.stop_vehicle_seat_tracker = g.stop_vehicle_seat_tracker or function()
 	g.polling_seating_in_Flames_Hub = false
 	getgenv().FlamesLibrary.disconnect("vehicle_seat_tracker")
+end
+
+g.VehicleDestroyer_Enabled = g.VehicleDestroyer_Enabled or false
+g.vehicle_parts_cache = g.vehicle_parts_cache or {}
+local lib = getgenv().FlamesLibrary
+local _uid = 0
+local function make_key(prefix, inst) _uid = _uid + 1 return prefix .. "_" .. tostring(inst):gsub("[^%w]", "") .. "_" .. _uid end
+local function is_in_vehicle(obj, vehicle) return vehicle and obj and obj:IsDescendantOf(vehicle) end
+local function process_veh_part(part)
+	if not part:IsA("BasePart") then return end
+	if g.vehicle_parts_cache[part] then return end
+	local my_vehicle = get_vehicle and get_vehicle()
+	if my_vehicle and is_in_vehicle(part, my_vehicle) then return end
+	part.CanCollide = false
+	g.vehicle_parts_cache[part] = true
+
+	local key = make_key("VehicleDestroyer_PartCleanup", part)
+	lib.connect(key, part.AncestryChanged:Connect(function()
+		if not part:IsDescendantOf(game) then
+			g.vehicle_parts_cache[part] = nil
+			lib.disconnect(key)
+		end
+	end))
+end
+
+local function process_veh_model(model)
+	if not model or not model.Parent then
+		local elapsed = 0
+		repeat task.wait(0.5) elapsed = elapsed + 0.5 until (model and model.Parent) or elapsed >= 10
+		if not model or not model.Parent then return end
+	end
+	local key = make_key("VehicleDestroyer_ModelCleanup", model)
+	for _, inst in ipairs(model:GetDescendants()) do
+		if inst:IsA("BasePart") then
+			process_veh_part(inst)
+		end
+	end
+
+	lib.connect(make_key("VehicleDestroyer_DescAdded", model), model.DescendantAdded:Connect(function(desc)
+		if not g.VehicleDestroyer_Enabled then return end
+		if desc:IsA("BasePart") then
+			process_veh_part(desc)
+		end
+	end))
+end
+
+local function setup_vehicles_folder(folder)
+	for _, child in ipairs(folder:GetChildren()) do
+		if child:IsA("Model") then
+			process_veh_model(child)
+		elseif child:IsA("BasePart") then
+			process_veh_part(child)
+		end
+	end
+
+	if lib.is_alive("VehicleDestroyer_ChildAdded") then lib.disconnect("VehicleDestroyer_ChildAdded") end
+	wait(0.25)
+	lib.connect("VehicleDestroyer_ChildAdded", folder.ChildAdded:Connect(function(child)
+		if not g.VehicleDestroyer_Enabled then return end
+		if child:IsA("Model") then
+			process_veh_model(child)
+		elseif child:IsA("BasePart") then
+			process_veh_part(child)
+		end
+	end))
+
+	if g.notify then g.notify("Success", "Flames Hub | Anti Vehicle Fling is now enabled.", 5) end
+end
+
+local function clear_all()
+   g.VehicleDestroyer_Enabled = false
+   table.clear(g.vehicle_parts_cache)
+   lib.cleanup_all()
+end
+
+g.anti_car_fling = g.anti_car_fling or function(state)
+	if state == true then
+		if g.VehicleDestroyer_Enabled then
+			if g.notify then
+				g.notify("Warning", "Flames Hub | Anti Vehicle Fling is already enabled.", 5)
+			end
+			return 
+		end
+
+		g.VehicleDestroyer_Enabled = true
+		table.clear(g.vehicle_parts_cache)
+		local vehicles_folder = g.vehicle_folder_path_main or g.get_vehicle_folder_main()
+		if vehicles_folder then setup_vehicles_folder(vehicles_folder) end
+		lib.connect("VehicleDestroyer_FolderWatch", Workspace.DescendantAdded:Connect(function(desc)
+			if not g.VehicleDestroyer_Enabled then return end
+			if desc:IsA("Folder") then
+				local resolved = g.vehicle_folder_path_main or g.get_vehicle_folder_main()
+				if resolved == desc then
+					setup_vehicles_folder(desc)
+				end
+			end
+		end))
+	elseif state == false then
+		if not g.VehicleDestroyer_Enabled then
+			if g.notify then
+				g.notify("Warning", "Anti Vehicle Fling not enabled.", 5)
+			end
+			return 
+		end
+
+		clear_all()
+		if g.notify then g.notify("Success", "Anti Vehicle Fling disabled.", 5) end
+	end
 end
 
 g.start_vehicle_seat_tracker()
@@ -1278,9 +1386,17 @@ local Vehicle_Section = Main_Page:CreateSection("Vehicle")
 Vehicle_Section:CreateToggle({
 Name = "Rainbow Car (FE)",
 Flag = "Rainbow_Car_FE",
-Default = g.rainbow_car_enabled or false,
+Default = getgenv().rainbow_car_enabled or false,
 Callback = function(new_value)
 	g.toggle_rainbow_car(new_value)
+end,})
+
+Vehicle_Section:CreateToggle({
+Name = "Anti Car Fling (FE)",
+Flag = "Anti_Car_Fling_FE",
+Default = getgenv().VehicleDestroyer_Enabled or false,
+Callback = function(state)
+	g.anti_car_fling(state)
 end,})
 
 Vehicle_Section:CreateSlider({
