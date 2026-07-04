@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.9"
+local Raw_Version = "V1.2.0"
 g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -20,6 +20,7 @@ local UserInputService = g.UserInputService or cloneref and cloneref(game:GetSer
 local CoreGui = g.CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local RunService = g.RunService or cloneref and cloneref(game:GetService("RunService")) or game:GetService("RunService")
+local lib = getgenv().FlamesLibrary
 g.colors = g.colors or {
 	Color3.fromRGB(255,255,255),
 	Color3.fromRGB(128,128,128),
@@ -222,6 +223,43 @@ g.carry_player_options = {
 	"Carry1",
 }
 
+local function AntiRagdollTick()
+	local Character = g.Character or LocalPlayer.Character or g.get_char(LocalPlayer, 10)
+	if not Character then return end
+	local Humanoid = g.Humanoid or Character:FindFirstChildOfClass("Humanoid") or g.get_human(LocalPlayer, 10)
+	if not Humanoid then return end
+	local HRP = g.HumanoidRootPart or Character:FindFirstChild("HumanoidRootPart") or g.get_root(LocalPlayer, 10)
+	if not HRP then return end
+	local Weld = HRP:FindFirstChild("HrpLowerTorsoWeld")
+	if Weld then Weld.Enabled = false end
+	local state = Humanoid:GetState()
+	if state == Enum.HumanoidStateType.Ragdoll then
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+		task.wait()
+		Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
+
+	Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+	Humanoid:ChangeState(Enum.HumanoidStateType.Running)
+	for _, v in ipairs(CoreGui:GetDescendants()) do
+		if v:IsA("ModuleScript") and v.Name:lower():find("ragdoll") then
+			v:Destroy()
+		end
+	end
+	task.wait(0.15)
+	for _, v in ipairs(g.Character:GetDescendants()) do
+		if v:IsA("PackageLink") and v:IsDescendantOf(g.Character:FindFirstChildOfClass("Folder")) then
+			v:Destroy()
+		end
+	end
+end
+
+if not lib.is_alive("AntiRagdoll_Heartbeat") then
+	lib.connect("AntiRagdoll_Heartbeat", RunService.Heartbeat:Connect(function()
+		pcall(AntiRagdollTick)
+	end))
+	g.notify("Success", "Anti Ragdoll is now running.", 5)
+end
 if not g.LocalPlayer then g.notify("Warning", "g.LocalPlayer missing or has not been created yet, creating...", 10) end
 if not g.LocalPlayer then g.LocalPlayer = g.Players.LocalPlayer or game.Players.LocalPlayer end
 local PlayerScripts = g.LocalPlayer:FindFirstChildOfClass("PlayerScripts")
