@@ -311,17 +311,23 @@ g.start_vehicle_seat_tracker = g.start_vehicle_seat_tracker or function()
 		local last_seat = nil
 
 		while g.polling_seating_in_Flames_Hub do
-			local Humanoid = g.Humanoid or (g.Character and g.Character:FindFirstChildWhichIsA("Humanoid")) or g.get_human(g.LocalPlayer, 10)
+			local ok = pcall(function()
+				local Humanoid = g.Humanoid or (g.Character and g.Character:FindFirstChildWhichIsA("Humanoid")) or g.get_human(g.LocalPlayer, 10)
+				if Humanoid then
+					local sit = Humanoid.Sit
+					local seat = Humanoid.SeatPart
 
-			if Humanoid then
-				local sit = Humanoid.Sit
-				local seat = Humanoid.SeatPart
-
-				if sit ~= last_sit_state or seat ~= last_seat then
-					last_sit_state = sit
-					last_seat = seat
-					g.refresh_vehicle_cache()
+					if sit ~= last_sit_state or seat ~= last_seat then
+						last_sit_state = sit
+						last_seat = seat
+						g.refresh_vehicle_cache()
+					end
 				end
+			end)
+
+			if not ok then
+				last_sit_state = nil
+				last_seat = nil
 			end
 
 			getgenv().FlamesLibrary.wait(0.25)
