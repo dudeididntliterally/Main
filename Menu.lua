@@ -96,7 +96,7 @@ local function matcheswhat(tpplaces, togo)
     return false
 end
 
-local function load_str(url) if not url or typeof(url) ~= "string" then return end loadstring(game:HttpGet(url))() end
+local function load_str(url) if not url or typeof(url) ~= "string" then return warn("That is not a string: "..tostring(url)) end loadstring(game:HttpGet(url))() end
 local function get_place_name(place_id)
     if not place_id then return end
     local id = type(place_id) == "table" and place_id[1] or place_id
@@ -220,15 +220,7 @@ Tab3:CreateButton({
 Name = "Free Emotes GUI",
 Description = "Loads the Flames Hub | Free Emotes GUI script.",
 Callback = function()
-    if getgenv().FreeEmotes_Enabled then
-        if getgenv().notify then
-            return getgenv().notify("Warning", "Flames Emotes GUI is already running.", 5)
-        else
-            return warn("Flames Emotes GUI is already running.")
-        end
-    end
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Emotes_Backup.lua"))()
-    getgenv().FreeEmotes_Enabled = true
 	if not UserInputService.TouchEnabled then
 		if getgenv().notify then getgenv().notify("Success", "Press F to toggle.", 1) end
 	else
