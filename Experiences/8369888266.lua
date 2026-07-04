@@ -12,12 +12,14 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.8"
+local Raw_Version = "V1.1.9"
 g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 local UserInputService = g.UserInputService or cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
 local CoreGui = g.CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
+local RunService = g.RunService or cloneref and cloneref(game:GetService("RunService")) or game:GetService("RunService")
 g.colors = g.colors or {
 	Color3.fromRGB(255,255,255),
 	Color3.fromRGB(128,128,128),
@@ -975,6 +977,116 @@ g.toggle_vehicle_noclip = g.toggle_vehicle_noclip or function(state)
 	end
 end
 
+local Flames_Library = getgenv().FlamesLibrary
+local Local_Player = g.LocalPlayer or Players.LocalPlayer
+g.anti_sit_enabled = g.anti_sit_enabled or false
+g.anti_sit_cache = g.anti_sit_cache or {}
+g.anti_sit_initialized = g.anti_sit_initialized or false
+local function is_seat(object) return object and (object:IsA("Seat") or object:IsA("VehicleSeat")) end
+local function get_sit_key(humanoid) return "AntiSit_Sit_" .. humanoid:GetDebugId() end
+local function neutralizar_asiento(asiento)
+	if not is_seat(asiento) then return end
+	if g.anti_sit_cache[asiento] then return end
+	g.anti_sit_cache[asiento] = true
+	local character = g.Character or Local_Player.Character or g.get_char(LocalPlayer, 5)
+	local humanoid = g.Humanoid or character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Sit then humanoid.Sit = false end
+	asiento.Disabled = true
+	asiento.CanTouch = false
+	local weld = asiento:FindFirstChildOfClass("Weld")
+	if weld then weld.Enabled = false end
+	local no_collision_constraint = asiento:FindFirstChildOfClass("NoCollisionConstraint")
+	if no_collision_constraint then no_collision_constraint.Enabled = false end
+end
+
+local function bind_humanoid_sit(humanoid)
+	local key = get_sit_key(humanoid)
+	if humanoid:GetAttribute("AntiSitBound") then return end
+	humanoid:SetAttribute("AntiSitBound", true)
+	humanoid:SetAttribute("AntiSitKey", key)
+
+	Flames_Library.connect(key,
+		humanoid:GetPropertyChangedSignal("Sit"):Connect(function()
+			if not g.anti_sit_enabled then return end
+			if humanoid.Sit then
+				humanoid.Sit = false
+			end
+		end)
+	)
+end
+
+local function setup_character_hook()
+	if g._anti_sit_character_hooked then return end
+	g._anti_sit_character_hooked = true
+	local function handle_character(character)
+		local humanoid = character:WaitForChild("Humanoid", 5)
+		if humanoid then bind_humanoid_sit(humanoid) end
+	end
+
+	if LocalPlayer.Character then handle_character(g.Character or LocalPlayer.Character) end
+	Flames_Library.connect("AntiSit_CharacterAdded", LocalPlayer.CharacterAdded:Connect(function(character)
+		if not g.anti_sit_enabled then return end
+		handle_character(character)
+	end))
+end
+
+local function init_anti_sit()
+	if g.anti_sit_initialized then return end
+	g.anti_sit_initialized = true
+	for _, object in ipairs(Workspace:GetDescendants()) do neutralizar_asiento(object) end
+	Flames_Library.connect("AntiSit_DescendantAdded", Workspace.DescendantAdded:Connect(function(object)
+		if not g.anti_sit_enabled then return end
+		neutralizar_asiento(object)
+	end))
+	setup_character_hook()
+end
+
+local function unbind_humanoid_sit(humanoid)
+	local key = humanoid:GetAttribute("AntiSitKey")
+	if key then Flames_Library.disconnect(key) end
+	humanoid:SetAttribute("AntiSitBound", nil)
+	humanoid:SetAttribute("AntiSitKey", nil)
+end
+
+g.anti_sit_func = g.anti_sit_func or function(state)
+	init_anti_sit()
+	if state == true then
+		if g.anti_sit_enabled then return end
+		g.anti_sit_enabled = true
+		g.notify("Success", "Flames Hub | Anti Sit is now enabled.", 3)
+		for _, object in ipairs(Workspace:GetDescendants()) do
+			if is_seat(object) then
+				neutralizar_asiento(object)
+			end
+		end
+		Flames_Library.connect("AntiSit_Heartbeat_Conn", RunService.Heartbeat:Connect(function(object)
+			if not g.anti_sit_enabled then return end
+			local human = g.Humanoid or g.Character:FindFirstChildWhichIsA("Humanoid") or g.Players.LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+			if human then human.Sit = false end
+			pcall(function() g.Humanoid.Sit = false end)
+		end))
+	elseif state == false then
+		if not g.anti_sit_enabled then return end
+		g.anti_sit_enabled = false
+		for seat in pairs(g.anti_sit_cache) do
+			pcall(function()
+				seat.Disabled = false
+				seat.CanTouch = true
+			end)
+		end
+
+		g.notify("Success", "Flames Hub | Anti Sit is now disabled.", 3)
+		FlamesLibrary.disconnect("AntiSit_Heartbeat_Conn")
+		FlamesLibrary.disconnect("AntiSit_DescendantAdded")
+		FlamesLibrary.disconnect("AntiSit_CharacterAdded")
+		table.clear(g.anti_sit_cache)
+		local character = g.Character or Local_Player.Character or g.get_char(LocalPlayer or game.Players.LocalPlayer, 10)
+		if character then for _, obj in ipairs(character:GetDescendants()) do if obj:IsA("Humanoid") then unbind_humanoid_sit(obj) end end end
+	else
+		return 
+	end
+end
+
 g.get_old_name_for_title = g.get_old_name_for_title or function()
 	local Head = g.Head or g.Character:FindFirstChild("Head") or g.get_head(LocalPlayer, 10)
 	if not Head then return g.notify("Error", "Head does not exist!", 5) end
@@ -1515,6 +1627,14 @@ Flag = "Random_NPCs_FE",
 Default = g.spawning_random_npc_followers or false,
 Callback = function(new_value)
 	g.spawn_npcs_flasher(new_value)
+end,})
+
+Local_Player_Section:CreateToggle({
+Name = "Anti-Sit (FE)",
+Flag = "Anti_Sit_FE_Toggle",
+Default = g.AntiSit_Enabled or false,
+Callback = function(new_value)
+	g.anti_sit_func(new_value)
 end,})
 
 g.flames_custom_vehicle_speed_boost_switch_UI = Vehicle_Section:CreateToggle({
