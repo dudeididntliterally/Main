@@ -14487,13 +14487,6 @@ g.create_ui_element("Button", Extras_Tab, {
 Name = "Free Emotes GUI",
 Description = "Opens the Free Emotes GUI.",
 Callback = function()
-    if g.FreeEmotes_Enabled then
-        return g.notify("Warning", "You already have Flames Emoting GUI loaded!", 6)
-    end
-    if CoreGui:FindFirstChild("FlamesEmoteGUI") then
-        return g.notify("Warning", "You already have Flames Emoting GUI loaded!", 6)
-    end
-    g.FreeEmotes_Enabled = true
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Emotes_Backup.lua"))()
 end}, "Free_Emotes_GUI_Button_UI")
 
