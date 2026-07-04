@@ -17,6 +17,7 @@ g.Script_Version = tostring(Raw_Version).."-RedcliffRP"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 local UserInputService = g.UserInputService or cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
+local CoreGui = g.CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 g.colors = g.colors or {
 	Color3.fromRGB(255,255,255),
 	Color3.fromRGB(128,128,128),
@@ -722,6 +723,13 @@ g.start_vehicle_fly = g.start_vehicle_fly or function()
 			return
 		end
 
+		if not car then
+			if g.vehicle_fly_switch_UI then g.vehicle_fly_switch_UI:Set(false, false) end
+			bv.Velocity = Vector3.zero
+			g.vehiclefly_control = {f=0,b=0,l=0,r=0,q=0,e=0}
+			return 
+		end
+
 		if g.vehiclefly_noclip then
 			for _, part in ipairs(g.vehiclefly_noclip_parts) do
 				if part and part.Parent and part.CanCollide then
@@ -732,7 +740,6 @@ g.start_vehicle_fly = g.start_vehicle_fly or function()
 
 		base.AssemblyAngularVelocity = Vector3.zero
 		local cam = workspace.CurrentCamera
-
 		if isMobile then
 			bg.CFrame = cam.CFrame
 			local mv = controlModule:GetMoveVector()
@@ -1250,126 +1257,252 @@ end
 
 g.toggle_rainbow_character_color = g.toggle_rainbow_character_color or function() g.rainbow_character_color_toggled(not g.rainbow_char_color_enabled) end
 g.toggle_noclip_for_character = g.toggle_noclip_for_character or function() g.noclip_for_character(not g.noclip_on_char_enabled) end
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Apple_UI_Library.lua"))()
-local window = library:init("RedCliff RP | "..tostring(getgenv().Script_Version), true, Enum.KeyCode.RightShift, true)
-window:Divider("Main")
-local Main = window:Section("Home")
-window:Divider("LocalPlayer")
-local LocalPlayer = window:Section("LocalPlayer")
-window:Divider("Vehicle")
-local Vehicle = window:Section("Vehicle")
-Vehicle:Switch("Rainbow Car (FE)", g.rainbow_car_enabled or false, function(state)
-	g.toggle_rainbow_car(state)
-end)
+local Atlas = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Atlas_UI.lua"))()
+local UI = Atlas.new({
+	Name = "RedCliff RP | " .. tostring(getgenv().Script_Version),
+	ConfigFolder = "RedCliffRP",
+	Color = Color3.fromRGB(21, 103, 251),
+	Bind = "RightShift",
+})
+local Main_Page = UI:CreatePage("Main")
+local Home_Section = Main_Page:CreateSection("Home")
+local Local_Player_Section = Main_Page:CreateSection("LocalPlayer")
+local Vehicle_Section = Main_Page:CreateSection("Vehicle")
 
-Vehicle:Slider("Rainbow Speed (FE)", 0, 3, g.rainbow_car_speed or 0, function(value)
-	g.rainbow_car_speed = value
-end)
+Vehicle_Section:CreateToggle({
+Name = "Rainbow Car (FE)",
+Flag = "Rainbow_Car_FE",
+Default = g.rainbow_car_enabled or false,
+Callback = function(new_value)
+	g.toggle_rainbow_car(new_value)
+end,})
 
-g.toggle_flash_all_wheels_UI_switch = Vehicle:Switch("Flash All Wheels (FE)", g.flash_all_wheels or false, function(state)
-	g.toggle_all_wheels_on_vehicle(state)
-end)
+Vehicle_Section:CreateSlider({
+Name = "Rainbow Speed (FE)",
+Flag = "Rainbow_Speed_FE",
+Min = 0,
+Max = 3,
+Default = g.rainbow_car_speed or 0,
+Callback = function(new_value)
+	g.rainbow_car_speed = new_value
+end,})
 
-Vehicle:Button("Despawn Vehicle (FE)", function()
+g.toggle_flash_all_wheels_UI_switch = Vehicle_Section:CreateToggle({
+Name = "Flash All Wheels (FE)",
+Flag = "Flash_All_Wheels_FE",
+Default = g.flash_all_wheels or false,
+Callback = function(new_value)
+	g.toggle_all_wheels_on_vehicle(new_value)
+end,})
+
+Vehicle_Section:CreateButton({
+Name = "Despawn Vehicle (FE)",
+Callback = function()
 	local remote, err = g.get_remote("VehiclesService", "RE", "RequestVehicleByName")
-	if not remote or not remote:IsA("RemoteEvent") then return g.notify("Error", "RemoteEvent: RequestVehicleByName does not exist or is not a RemoteEvent!", 5) end
+	if not remote or not remote:IsA("RemoteEvent") then
+		return g.notify("Error", "RemoteEvent: RequestVehicleByName does not exist or is not a RemoteEvent!", 5)
+	end
 	remote:FireServer()
-end)
+end,})
 
-LocalPlayer:Switch("Job Spammer (FE)", g.job_spammer_FE or false, function(state)
-	g.toggle_job_spammer_FE(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Job Spammer (FE)",
+Flag = "Job_Spammer_FE",
+Default = g.job_spammer_FE or false,
+Callback = function(new_value)
+	g.toggle_job_spammer_FE(new_value)
+end,})
 
-LocalPlayer:Switch("Flash Arms & Legs (FE)", g.spamming_legs_and_arms_FE or false, function(state)
-	g.toggle_arms_and_legs_instantly(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Flash Arms & Legs (FE)",
+Flag = "Flash_Arms_And_Legs_FE",
+Default = g.spamming_legs_and_arms_FE or false,
+Callback = function(new_value)
+	g.toggle_arms_and_legs_instantly(new_value)
+end,})
 
-LocalPlayer:Switch("Rainbow Pregnancy (FE)", g.rainbow_pregnant_belly or false, function(state)
-	g.toggle_pregnant_belly_rainbow_colors(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Rainbow Pregnancy (FE)",
+Flag = "Rainbow_Pregnancy_FE",
+Default = g.rainbow_pregnant_belly or false,
+Callback = function(new_value)
+	g.toggle_pregnant_belly_rainbow_colors(new_value)
+end,})
 
-g.vehicle_fly_switch_UI = Vehicle:Switch("Vehicle Fly (FE)", g.vehicle_fly or false, function(state)
+g.vehicle_fly_switch_UI = Vehicle_Section:CreateToggle({
+Name = "Vehicle Fly (FE)",
+Flag = "Vehicle_Fly_FE",
+Default = g.vehicle_fly or false,
+Callback = function(new_value)
 	g.toggle_vehicle_fly()
-end)
+end,})
 
-g.vehicle_noclip_switch_UI = Vehicle:Switch("Vehicle Noclip (FE)", g.vehiclefly_noclip or false, function(state)
-	g.toggle_vehicle_noclip(state)
-end)
+g.vehicle_noclip_switch_UI = Vehicle_Section:CreateToggle({
+Name = "Vehicle Noclip (FE)",
+Flag = "Vehicle_Noclip_FE",
+Default = g.vehiclefly_noclip or false,
+Callback = function(new_value)
+	g.toggle_vehicle_noclip(new_value)
+end,})
 
-Vehicle:Slider("V-Fly Speed", 1, 75, g.vehicle_fly_speed or 0, function(value)
-	getgenv().vehicle_fly_speed = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "V-Fly Speed",
+Flag = "V_Fly_Speed",
+Min = 1,
+Max = 75,
+Default = g.vehicle_fly_speed or 0,
+Callback = function(new_value)
+	getgenv().vehicle_fly_speed = new_value
+end,})
 
-LocalPlayer:Switch("Rainbow Name (FE)", g.flash_rainbow_name_enabled or false, function(state)
-	g.rainbow_name_flasher_toggled(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Rainbow Name (FE)",
+Flag = "Rainbow_Name_FE",
+Default = g.flash_rainbow_name_enabled or false,
+Callback = function(new_value)
+	g.rainbow_name_flasher_toggled(new_value)
+end,})
 
-LocalPlayer:Switch("Rainbow Bio (FE)", g.flash_rainbow_bio_enabled or false, function(state)
-	g.rainbow_bio_flasher_toggled(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Rainbow Bio (FE)",
+Flag = "Rainbow_Bio_FE",
+Default = g.flash_rainbow_bio_enabled or false,
+Callback = function(new_value)
+	g.rainbow_bio_flasher_toggled(new_value)
+end,})
 
-LocalPlayer:Switch("Noclip (FE)", g.noclip_on_char_enabled or false, function(state)
-	g.noclip_for_character(state)
-end)
+Local_Player_Section:CreateToggle({
+Name = "Noclip (FE)",
+Flag = "Noclip_FE",
+Default = g.noclip_on_char_enabled or false,
+Callback = function(new_value)
+	g.noclip_for_character(new_value)
+end,})
 
-g.rainbow_skin_toggle_UI = LocalPlayer:Switch("Rainbow Skin (FE)", g.rainbow_char_color_enabled or false, function(state)
-	g.rainbow_character_color_toggled(state)
-end)
+g.rainbow_skin_toggle_UI = Local_Player_Section:CreateToggle({
+Name = "Rainbow Skin (FE)",
+Flag = "Rainbow_Skin_FE",
+Default = g.rainbow_char_color_enabled or false,
+Callback = function(new_value)
+	g.rainbow_character_color_toggled(new_value)
+end,})
 
-g.spam_npcs_switch_toggle_UI = Main:Switch("Random NPCs (FE)", g.spawning_random_npc_followers or false, function(state)
-	g.spawn_npcs_flasher(state)
-end)
+g.spam_npcs_switch_toggle_UI = Home_Section:CreateToggle({
+Name = "Random NPCs (FE)",
+Flag = "Random_NPCs_FE",
+Default = g.spawning_random_npc_followers or false,
+Callback = function(new_value)
+	g.spawn_npcs_flasher(new_value)
+end,})
 
-g.flames_custom_vehicle_speed_boost_switch_UI = Vehicle:Switch("Vehicle Boost (FE)", g.vehicle_speed_boost_active or false, function(state)
-	g.vehicle_speed_boost_toggle(state)
-end)
+g.flames_custom_vehicle_speed_boost_switch_UI = Vehicle_Section:CreateToggle({
+Name = "Vehicle Boost (FE)",
+Flag = "Vehicle_Boost_FE",
+Default = g.vehicle_speed_boost_active or false,
+Callback = function(new_value)
+	g.vehicle_speed_boost_toggle(new_value)
+end,})
 
-Vehicle:Slider("Speed Boost Max Forward", 25, 500, g.vehicle_speed_boost_max_forward or 250, function(value)
-	g.vehicle_speed_boost_max_forward = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "Speed Boost Max Forward",
+Flag = "Speed_Boost_Max_Forward",
+Min = 25,
+Max = 500,
+Default = g.vehicle_speed_boost_max_forward or 250,
+Callback = function(new_value)
+	g.vehicle_speed_boost_max_forward = new_value
+end,})
 
-Vehicle:Slider("Speed Boost Max Backward", 25, 250, g.vehicle_speed_boost_max_backward or 100, function(value)
-	g.vehicle_speed_boost_max_backward = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "Speed Boost Max Backward",
+Flag = "Speed_Boost_Max_Backward",
+Min = 25,
+Max = 250,
+Default = g.vehicle_speed_boost_max_backward or 100,
+Callback = function(new_value)
+	g.vehicle_speed_boost_max_backward = new_value
+end,})
 
-Vehicle:Slider("Acceleration Time", 0.02, 1, g.vehicle_speed_boost_acceleration_time or 0.1, 2, function(value)
-	g.vehicle_speed_boost_acceleration_time = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "Acceleration Time",
+Flag = "Acceleration_Time",
+Min = 0.02,
+Max = 1,
+Digits = 2,
+Default = g.vehicle_speed_boost_acceleration_time or 0.1,
+Callback = function(new_value)
+	g.vehicle_speed_boost_acceleration_time = new_value
+end,})
 
-Vehicle:Slider("Max Traction Multiplier", 1, 6, g.vehicle_speed_boost_max_traction_mult or 3.5, 1, function(value)
-	g.vehicle_speed_boost_max_traction_mult = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "Max Traction Multiplier",
+Flag = "Max_Traction_Multiplier",
+Min = 1,
+Max = 6,
+Digits = 1,
+Default = g.vehicle_speed_boost_max_traction_mult or 3.5,
+Callback = function(new_value)
+	g.vehicle_speed_boost_max_traction_mult = new_value
+end,})
 
-Vehicle:Slider("Min Turn Angle Multiplier", 0.1, 1, g.vehicle_speed_boost_min_yaw_mult or 0.35, 2, function(value)
-	g.vehicle_speed_boost_min_yaw_mult = value
-end)
+Vehicle_Section:CreateSlider({
+Name = "Min Turn Angle Multiplier",
+Flag = "Min_Turn_Angle_Multiplier",
+Min = 0.1,
+Max = 1,
+Digits = 2,
+Default = g.vehicle_speed_boost_min_yaw_mult or 0.35,
+Callback = function(new_value)
+	g.vehicle_speed_boost_min_yaw_mult = new_value
+end,})
 
 g.request_carry_spam_plr_target = nil
-Main:TextField("Carry Spam Plr", "User/Display", function(target)
-	local targ = g.findplr(target)
-	if not targ then return notify("Error", "Target not found or they have left the game.", 5) end
+Home_Section:CreateTextBox({
+Name = "Carry Spam Plr",
+Flag = "Carry_Spam_Plr",
+DefaultText = "",
+PlaceholderText = "User/Display",
+Callback = function(inputted_text, enter_pressed)
+	local targ = g.findplr(inputted_text)
+	if not targ then
+		return g.notify("Error", "Target not found or they have left the game.", 5)
+	end
 	g.request_carry_spam_plr_target = targ
-	if g.notify then g.notify("Success", "Set Target: "..tostring(targ.Name), 5) end
-end)
+	if g.notify then
+		g.notify("Success", "Set Target: " .. tostring(targ.Name), 5)
+	end
+end,})
 
-g.spam_request_carry_UI_toggle = Main:Switch("Request Carry Spam (FE)", g.spam_carry_requests_every_option or false, function(state)
+g.spam_request_carry_UI_toggle = Home_Section:CreateToggle({
+Name = "Request Carry Spam (FE)",
+Flag = "Request_Carry_Spam_FE",
+Default = g.spam_carry_requests_every_option or false,
+Callback = function(new_value)
 	if not g.request_carry_spam_plr_target then
 		g.spam_carry_requests_every_option = false
-		if g.spam_request_carry_UI_toggle then g.spam_request_carry_UI_toggle:Set(false, false) end
+		if g.spam_request_carry_UI_toggle then
+			g.spam_request_carry_UI_toggle:Set(false, false)
+		end
 		return g.notify("Error", "Not a valid player, please use the above input to set a target.", 6)
 	end
-	g.spam_carry_requests_all_options(state, g.request_carry_spam_plr_target)
-end)
+	g.spam_carry_requests_all_options(new_value, g.request_carry_spam_plr_target)
+end,})
 
-Main:Switch("Posts Spammer (FE)", g.spamming_random_posts_redcliff_phone or false, function(state)
-	g.send_random_posts_spammer(state)
-end)
+Home_Section:CreateToggle({
+Name = "Posts Spammer (FE)",
+Flag = "Posts_Spammer_FE",
+Default = g.spamming_random_posts_redcliff_phone or false,
+Callback = function(new_value)
+	g.send_random_posts_spammer(new_value)
+end,})
 
-Main:Button("Check Server Ownership", function()
+Home_Section:CreateButton({
+Name = "Check Server Ownership",
+Callback = function()
 	local owner = g.is_localplayer_server_owner()
 	if owner then
 		g.notify("Success", "You own this private server.", 5)
 	else
 		g.notify("Error", "You do not own this private server.", 5)
 	end
-end)
+end,})
