@@ -14177,7 +14177,7 @@ Callback = function(state)
     g.always_show_title_of_player_regardless_of_chats(state)
 end}, "Always_Show_Titles_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Tab, {
 Name = "RGB Skin (FE)",
 Description = "Enables RGB Skin, making your skintone flash rainbow colors.",
 CurrentValue = getgenv().rainbow_skintone_currently_enabled or false,
@@ -14185,7 +14185,7 @@ Callback = function(state)
     rainbow_skin(state)
 end}, "RGB_Skin_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Extras_Tab, {
 Name = "RGB Tool (FE)",
 Description = "Enables RGB Tool, making your currently held tool flash rainbow colors.",
 CurrentValue = getgenv().Rainbow_Tools_FE or false,
