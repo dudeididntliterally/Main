@@ -12654,7 +12654,7 @@ end}, "Anti_Hashtags_Toggle_UI")
 g.create_ui_element("Button", Home_Section, {
 Name = "Destroy GUI",
 Callback = function()
-    if Luna then Luna:Destroy() end
+    if Atlas then Atlas:Destroy() end
 end})
 
 g.create_ui_element("Toggle", LocalPlayer_Section, {
