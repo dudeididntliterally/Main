@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V9.0.7"
+local Raw_Version = "V9.1.0"
 g.Script_Version = tostring(Raw_Version).."-LifeHub"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -6404,6 +6404,14 @@ g.start_vehicle_fly = g.start_vehicle_fly or function()
         if not g.vehicle_fly or not base.Parent then
             bv.Velocity = Vector3.zero
             g.vehiclefly_control = {f=0,b=0,l=0,r=0,q=0,e=0}
+            if not base.Parent then
+                if g.main_vehicle_fly_UI_toggle then g.main_vehicle_fly_UI_toggle:Set(false, false) end
+                if g.stop_vehicle_fly then
+                    g.stop_vehicle_fly()
+                else
+                    g.cleanup()
+                end
+            end
             return
         end
 
@@ -6431,8 +6439,8 @@ g.start_vehicle_fly = g.start_vehicle_fly or function()
     end)
 
     if not isMobile then
-        g.vehiclefly_conns.down = UserInputService.InputBegan:Connect(function(i, g)
-            if g then return end
+        g.vehiclefly_conns.down = UserInputService.InputBegan:Connect(function(i, game_processed)
+            if game_processed then return end
             if i.KeyCode == Enum.KeyCode.W then g.vehiclefly_control.f = 1  end
             if i.KeyCode == Enum.KeyCode.S then g.vehiclefly_control.b = -1 end
             if i.KeyCode == Enum.KeyCode.A then g.vehiclefly_control.l = -1 end
@@ -7906,17 +7914,7 @@ g.autospinspeed = g.autospinspeed or function(base)
 end
 
 g.change_spin_speed = g.change_spin_speed or function(speed)
-    if typeof(speed) ~= "number" then
-        if speed then
-            return notify("Error", tostring(speed).." isn't a number! Input a number.", 5)
-        else
-            return notify("Error", "That wasn't a number! Input a number.", 5)
-        end
-    end
-    if g.walkflinging then
-        return notify("Error", "Turn off walkfling first for this to work properly.", 10)
-    end
-
+    if g.walkflinging then return notify("Error", "Turn off walkfling first for this to work properly.", 10) end
     for _, v in ipairs(g.HumanoidRootPart:GetChildren()) do
         if v.Name == "FlamesHub_Spin" then
             v.AngularVelocity = Vector3.new(0, speed, 0)
@@ -12563,33 +12561,13 @@ if not g.FlamesHubPlayerEvents_Check then
     end))
 end
 
-local Luna = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Luna.lua", true))()
-local Window = Luna:CreateWindow({
+local Atlas = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Atlas_UI.lua", true))()
+local UI = Atlas.new({
     Name = "Flames Hub | Life Together RP",
-    Subtitle = "welcome!",
-    LogoID = "0",
-    LoadingEnabled = true,
-    LoadingTitle = "Flames Hub | Presents",
-    LoadingSubtitle = "by Flames Hub.",
-    ConfigSettings = {
-        Enabled = true,
-        RootFolder = nil,
-        ConfigFolder = "FlamesHub_Life_Together_RP_Menu_Configuration"
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "Flames Hub | Key System",
-        Subtitle = "",
-        Note = "Welcome to Flames Hub | Life Together RP!",
-        SaveInRoot = false,
-        SaveKey = true,
-        Key = {"Example Key"},
-        SecondAction = {
-            Enabled = false,
-            Type = "Link",
-            Parameter = ""
-        }
-    }
+    ConfigFolder = "FlamesHub_Life_Together_RP_Menu_Configuration",
+    Color = Color3.fromRGB(21, 103, 251),
+    Credit = "Flames Hub",
+    Bind = "RightShift",
 })
 wait(0.25)
 g.create_ui_element = g.create_ui_element or function(element_type, parent, config, global_name, flag)
@@ -12600,7 +12578,7 @@ g.create_ui_element = g.create_ui_element or function(element_type, parent, conf
         Slider      = function() return parent:CreateSlider(config, flag) end,
         Button      = function() return parent:CreateButton(config, flag) end,
         ColorPicker = function() return parent:CreateColorPicker(config, flag) end,
-        Input       = function() return parent:CreateInput(config, flag) end,
+        Input       = function() return parent:CreateTextBox(config, flag) end,
         Dropdown    = function() return parent:CreateDropdown(config, flag) end,
         Label       = function() return parent:CreateLabel(config, flag) end,
     }
@@ -12620,72 +12598,22 @@ g.create_ui_element = g.create_ui_element or function(element_type, parent, conf
 end
 wait(0.25)
 getgenv().notify("Success", "Now loading UI elements...", 10)
-local Home_Tab = Window:CreateTab({
-    Name = "Home",
-    Icon = "house",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Home_Section = Home_Tab:CreateSection("Main / Home | Page")
-local LocalPlayer_Tab = Window:CreateTab({
-    Name = "LocalPlayer",
-    Icon = "person",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local LocalPlayer_Section = LocalPlayer_Tab:CreateSection("LocalPlayer | Page")
-local Vehicle_Tab = Window:CreateTab({
-    Name = "Vehicle",
-    Icon = "directions_car",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Vehicle_Section = Vehicle_Tab:CreateSection("Vehicle | Page")
-local Players_Tab = Window:CreateTab({
-    Name = "Players",
-    Icon = "group",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Players_Section = Players_Tab:CreateSection("Players | Page")
+local Home_Page = UI:CreatePage("Main")
+local Home_Section = Home_Page:CreateSection("Main")
+local LocalPlayer_Section = Home_Page:CreateSection("LocalPlayer")
+local Vehicle_Section = Home_Page:CreateSection("Vehicle")
+local Players_Section = Home_Page:CreateSection("Players")
 local priv_server_is_in = g.is_in_private_server()
-local PrivServer_Tab
 local PrivServer_Section
-
 if priv_server_is_in == true then
-    PrivServer_Tab = Window:CreateTab({
-        Name = "Private Server",
-        Icon = "lock_outline",
-        ImageSource = "Material",
-        ShowTitle = true
-    })
-    PrivServer_Section = PrivServer_Tab:CreateSection("Private Server | Page")
+    PrivServer_Section = Home_Page:CreateSection("Private Server")
 end
-local Phone_Tab = Window:CreateTab({
-    Name = "Phone",
-    Icon = "smartphone",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Phone_Section = Phone_Tab:CreateSection("Phone | Page")
-local Houses_Tab = Window:CreateTab({
-    Name = "Houses",
-    Icon = "home_filled",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Houses_Section = Houses_Tab:CreateSection("Houses | Page")
-local Extras_Tab = Window:CreateTab({
-    Name = "Extras",
-    Icon = "widgets",
-    ImageSource = "Material",
-    ShowTitle = true
-})
-local Extras_Section = Extras_Tab:CreateSection("Extras | Page")
+local Phone_Section = Home_Page:CreateSection("Phone")
+local Houses_Section = Home_Page:CreateSection("Houses")
+local Extras_Section = Home_Page:CreateSection("Extras")
 wait(0.25)
-g.create_ui_element("Button", Home_Tab, {
+g.create_ui_element("Button", Home_Section, {
 Name = "Join the Flames Hub Discord server.",
-Description = "Redirects you to the official Discord server for Flames Hub, or copies it.",
 Callback = function()
     local http_requesting_func = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
     local http_service = g.HttpService or (cloneref and cloneref(game:GetService("HttpService"))) or game:GetService("HttpService")
@@ -12715,40 +12643,38 @@ Callback = function()
     end
 end})
 
-g.create_ui_element("Toggle", Home_Tab, {
+g.create_ui_element("Toggle", Home_Section, {
 Name = "Anti Hashtags (FE) BETA!",
-Description = "Stops hashtagged messages from sending, preventing hashtags.",
-CurrentValue = (getgenv().FlamesLibrary.modules and getgenv().FlamesLibrary.modules.chat_filter_override.enabled) or false,
+Default = (getgenv().FlamesLibrary.modules and getgenv().FlamesLibrary.modules.chat_filter_override.enabled) or false,
+Flag = "Anti_Hashtags_Toggle_UI",
 Callback = function(state)
     if getgenv().FlamesLibrary.modules then getgenv().FlamesLibrary.modules.chat_filter_override:toggle(state) end
-end})
+end}, "Anti_Hashtags_Toggle_UI")
 
-g.create_ui_element("Button", Home_Tab, {
+g.create_ui_element("Button", Home_Section, {
 Name = "Destroy GUI",
-Description = "Fully shuts-down this menu, but leaves everything on for you.",
 Callback = function()
     if Luna then Luna:Destroy() end
 end})
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Job Spammer (FE)",
-Description = "Toggles Job Spammer, which spams every job available / RGB name.",
-CurrentValue = getgenv().Every_Job or false,
+Default = getgenv().Every_Job or false,
+Flag = "Job_Spammer_Toggled_UI",
 Callback = function(state)
     g.job_spammer(state)
 end}, "Job_Spammer_Toggled_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Glitch Outfit (FE)",
-Description = "Toggles Glitch Outfit, which basically makes your clothing look bugged out.",
-CurrentValue = getgenv().Glitching_Outfit or false,
+Default = getgenv().Glitching_Outfit or false,
+Flag = "Glitch_Outfit_Toggle_UI",
 Callback = function(state)
     g.glitch_outfit(state)
 end}, "Glitch_Outfit_Toggle_UI")
 
-g.create_ui_element("Button", Vehicle_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Despawn Vehicle (FE)",
-Description = "Despawns your currently spawned vehicle.",
 Callback = function()
     local Current_Car = get_vehicle()
     if not Current_Car then return g.notify("Error", "You do not have a vehicle spawned!", 3) end
@@ -12758,42 +12684,42 @@ Callback = function()
     end
 end}, "Despawn_Vehicle_Button_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Rainbow Vehicle (FE)",
-Description = "Toggles Rainbow Car, which makes your car colors change rapidly.",
-CurrentValue = getgenv().Rainbow_Vehicle or false,
+Default = getgenv().Rainbow_Vehicle or false,
+Flag = "Rainbow_Vehicle_Toggle_UI",
 Callback = function(state)
     g.RGB_Vehicle(state)
 end}, "Rainbow_Vehicle_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Two Tone Vehicle (FE)",
-Description = "Toggles Two Tone Car, which makes your car 2 different colors on loop.",
-CurrentValue = getgenv().two_tone_vehicle_colors_changing or false,
+Default = getgenv().two_tone_vehicle_colors_changing or false,
+Flag = "Two_Tone_Car_Toggle_UI",
 Callback = function(state)
     g.two_color_switcher_FE_func(state)
 end}, "Two_Tone_Car_Toggle_UI")
 
-g.create_ui_element("Toggle", Phone_Tab, {
+g.create_ui_element("Toggle", Phone_Section, {
 Name = "Rainbow Phone (FE)",
-Description = "Toggles Rainbow Phone, which makes your Phone change colors rapidly.",
-CurrentValue = getgenv().RGB_Rainbow_Phone or false,
+Default = getgenv().RGB_Rainbow_Phone or false,
+Flag = "Rainbow_Phone_Toggle_UI",
 Callback = function(state)
     g.RGB_Phone(state)
 end}, "Rainbow_Phone_Toggle_UI")
 
-g.create_ui_element("Toggle", Home_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Free Premium (FE)",
-Description = "This does not include houses, invisiblity, or extra outfit slots.",
-CurrentValue = getgenv().Has_Free_LifePremium or false,
+Default = getgenv().Has_Free_LifePremium or false,
+Flag = "Free_Premium_Toggle_UI",
 Callback = function(state)
     g.FreePayFuncToggle(state)
 end}, "Free_Premium_Toggle_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Spawn Vehicle (FE, Any)",
-Description = "Spawns any Vehicle you type it if it matches one in the game.",
 PlaceholderText = "Enter vehicle name...",
+Flag = "Spawn_Vehicle_Input_UI",
 Callback = function(split)
     local input = split:lower():gsub("%s+", "")
     local matched = false
@@ -12822,10 +12748,10 @@ Callback = function(split)
     end
 end}, "Spawn_Vehicle_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Teleport To Player",
-Description = "Enter UserName / DisplayName, doesn't have to be full.",
 PlaceholderText = "user or display...",
+Flag = "Teleport_Player_Input_UI",
 Callback = function(text)
     local Target = findplr(text)
     if not Target then return g.notify("Error", "That is not a valid Player.", 3) end
@@ -12846,10 +12772,10 @@ Callback = function(text)
     g.notify("Success", "Teleported to "..Target.Name, 3)
 end}, "Teleport_Player_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "View Player",
-Description = "Enter a username or displayname to spectate them.",
 PlaceholderText = "Username or displayname...",
+Flag = "View_Player_Input_UI",
 Callback = function(split)
     local View_Target = findplr(split)
     if not View_Target then return g.notify("Error", "Target was not found or does not exist!", 5) end
@@ -12862,42 +12788,40 @@ Callback = function(split)
     workspace.CurrentCamera.CameraSubject = target_human or target_char or g.Character
 end}, "View_Player_Input_UI")
 
-g.create_ui_element("Button", LocalPlayer_Tab, {
+g.create_ui_element("Button", Players_Section, {
 Name = "Unview Player",
-Description = "Unviews any player you're spectating.",
 Callback = function()
     if not g.Viewing_A_Player then return g.notify("Error", "You're not viewing anyone.", 5) end
     g.Viewing_A_Player = false
     workspace.CurrentCamera.CameraSubject = g.Humanoid or g.Character or g.LocalPlayer.Character or get_char(LocalPlayer, 10)
 end})
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.main_vehicle_fly_UI_toggle = g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Vehicle Fly (FE)",
-Description = "Enables a working Vehicle-Fly that will not break your car.",
-CurrentValue = getgenv().vehicle_fly or false,
+Default = getgenv().vehicle_fly or false,
+Flag = "Vehicle_Fly_Toggle_UI",
 Callback = function(state)
     g.toggle_vehicle_fly(state)
 end}, "Vehicle_Fly_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Anti Car Fling (FE)",
-Description = "Enables anticarfling, preventing you from being flung by Vehicles.",
-CurrentValue = getgenv().VehicleDestroyer_Enabled or false,
+Default = getgenv().VehicleDestroyer_Enabled or false,
+Flag = "Anti_Car_Fling_Toggle_UI",
 Callback = function(state)
     g.anti_car_fling(state)
 end}, "Anti_Car_Fling_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Auto Lock Car (FE)",
-Description = "Automatically (loop) locks your vehicle/car when there is one spawned.",
-CurrentValue = getgenv().AutoLockOn or false,
+Default = getgenv().AutoLockOn or false,
+Flag = "Auto_Lock_Car_Toggle_UI",
 Callback = function(state)
     if g.ToggleAutoLock then g.ToggleAutoLock(state) end
 end}, "Auto_Lock_Car_Toggle_UI")
 
-g.create_ui_element("Button", Vehicle_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Lock Car (FE)",
-Description = "Locks your currently spawned car.",
 Callback = function()
     local Current_Car = get_vehicle()
     if not Current_Car then return g.notify("Error", "You do not have a vehicle spawned!", 5) end
@@ -12906,9 +12830,8 @@ Callback = function()
     g.notify("Success", "Locked vehicle: " .. tostring(Current_Car), 5)
 end}, "Lock_Car_Button_UI")
 
-g.create_ui_element("Button", Vehicle_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Unlock Car (FE)",
-Description = "Unlocks your currently spawned car.",
 Callback = function()
     local Current_Car = get_vehicle()
     if not Current_Car then return g.notify("Error", "You do not have a vehicle spawned!", 5) end
@@ -12917,10 +12840,10 @@ Callback = function()
     g.notify("Success", "Unlocked vehicle: " .. tostring(Current_Car), 5)
 end}, "Unlock_Car_Button_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Trailer (FE)",
-Description = "Gives you the WaterSkies trailer on any vehicle.",
-CurrentValue = getgenv().trailer_enabled or false,
+Default = getgenv().trailer_enabled or false,
+Flag = "Trailer_Toggle_UI",
 Callback = function(state)
     local Vehicle = get_vehicle()
     if not Vehicle then return g.notify("Error", "You do not have a Vehicle spawned, spawn one and try again!", 7) end
@@ -12932,10 +12855,10 @@ Callback = function(state)
     water_skie_trailer(state, get_vehicle())
 end}, "Trailer_Toggle_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "View Car (FE)",
-Description = "Views your Vehicle, setting your camera to it.",
-CurrentValue = getgenv().viewing_car or false,
+Default = getgenv().viewing_car or false,
+Flag = "View_Car_Toggle_UI",
 Callback = function(state)
     if state then
         local Camera = g.Camera or workspace.CurrentCamera
@@ -12986,9 +12909,8 @@ Callback = function(state)
     end
 end}, "View_Car_Toggle_UI")
 
-g.create_ui_element("Button", Vehicle_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Bring Vehicle To Me (FE)",
-Description = "Teleport car to you and sit in it.",
 Callback = function()
     local Util = g.Util or require(g.ReplicatedStorage:FindFirstChild("Util", true))
     if not Util then return g.notify("Error", "ModuleScript: 'Util' does not seem to exist.", 5) end
@@ -13022,9 +12944,8 @@ Callback = function()
     g.notify("Success", "Brought your Vehicle to you!", 5)
 end}, "Bring_Vehicle_Button_UI")
 
-g.create_ui_element("Button", Vehicle_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Go To Vehicle (FE)",
-Description = "Teleports you straight to your car/vehicle directly.",
 Callback = function()
     local Vehicle = get_vehicle()
     if not Vehicle then return g.notify("Error", "You do not have a vehicle spawned, spawn one and try again!", 7) end
@@ -13033,10 +12954,10 @@ Callback = function()
     end
 end}, "Go_To_Vehicle_Button_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Teleport Car To Player (FE)",
-Description = "Teleports your vehicle/car to the specified target.",
 PlaceholderText = "Username or displayname...",
+Flag = "TP_Car_To_Player_Input_UI",
 Callback = function(split)
     local Vehicle = get_vehicle()
     if not Vehicle then return g.notify("Error", "You do not have a vehicle spawned, spawn one and try again!", 7) end
@@ -13081,10 +13002,10 @@ Callback = function(split)
     end
 end}, "TP_Car_To_Player_Input_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Steal Car (FE)",
-Description = "Allows you to swiftly take someones car.",
 PlaceholderText = "Username or displayname...",
+Flag = "Steal_Car_Input_UI",
 Callback = function(split)
     local take_vehicle_target_plr = findplr(split)
     if not take_vehicle_target_plr then return g.notify("Error", "That Player does not exist, or has left the game.", 7) end
@@ -13097,18 +13018,18 @@ Callback = function(split)
     g.steal_car_functionality(take_vehicle_target_plr)
 end}, "Steal_Car_Input_UI")
 
-g.create_ui_element("Toggle", Vehicle_Tab, {
+g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Vehicle ESP",
-Description = "Enables Vehicle ESP, which lets you see cars through walls from anywhere.",
-CurrentValue = getgenv().vehicle_esp_enabled or false,
+Default = getgenv().vehicle_esp_enabled or false,
+Flag = "Vehicle_ESP_Toggle_UI",
 Callback = function(state)
     vehicle_esp_toggle(state)
 end}, "Vehicle_ESP_Toggle_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Orbit Player (FE)",
-Description = "Lets you Orbit around the target Player (FE).",
 PlaceholderText = "User or Display...",
+Flag = "Orbit_Player_Input_UI",
 Callback = function(split)
     local Target = findplr(split)
     if not Target then return g.notify("Error", "Target doesn't exist or has left the game.", 5) end
@@ -13118,11 +13039,12 @@ Callback = function(split)
     start_orbit_plr(Target, speed, distance)
 end}, "Orbit_Player_Input_UI")
 
-g.create_ui_element("Slider", Players_Tab, {
+g.create_ui_element("Slider", Players_Section, {
 Name = "Orbit Speed",
-Range = {1, 75},
-Increment = 1,
-CurrentValue = getgenv().Orbit_Speed_Value or 1,
+Min = 1,
+Max = 75,
+Default = getgenv().Orbit_Speed_Value or 1,
+Flag = "Orbit_Speed_Slider_UI",
 Callback = function(val)
     getgenv().Orbit_Speed_Value = val
     if g.Is_Orbiting then
@@ -13130,19 +13052,20 @@ Callback = function(val)
     end
 end}, "Orbit_Speed_Slider_UI")
 
-g.create_ui_element("Slider", Players_Tab, {
+g.create_ui_element("Slider", Players_Section, {
 Name = "Orbit Distance",
-Range = {1, 75},
-Increment = 1,
-CurrentValue = getgenv().Orbit_Distance_Value or 5,
+Min = 1,
+Max = 75,
+Default = getgenv().Orbit_Distance_Value or 5,
+Flag = "Orbit_Distance_Slider_UI",
 Callback = function(val)
     getgenv().Orbit_Distance_Value = val
 end}, "Orbit_Distance_Slider_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Annoy Player (FE)",
-Description = "Spam calls + spam request carries the target player (FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Annoy_Player_Input_UI",
 Callback = function(split)
     local Target = findplr(split)
     if not Target then return g.notify("Error", "That Player does not exist or has left the game.", 7) end
@@ -13212,9 +13135,8 @@ Callback = function(split)
     g.Currently_Running_Annoy_Loop = Annoy_Thread
 end}, "Annoy_Player_Input_UI")
 
-g.create_ui_element("Button", Players_Tab, {
+g.create_ui_element("Button", Players_Section, {
 Name = "UnAnnoy Player",
-Description = "Disables the Annoy loop that you've set above.",
 Callback = function() 
     if not g.annoy_active then
         return g.notify("Warning", "Annoy Player is not currently running.", 5)
@@ -13226,10 +13148,10 @@ Callback = function()
     g.notify("Success", "Annoy loop disabled.", 5)
 end})
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Loop Fling Player (broken)",
-Description = "Automatically flings the target Player on loop.",
 PlaceholderText = "Username or displayname...",
+Flag = "Loop_Fling_Input_UI",
 Callback = function(split)
     local loop_fling_victim = findplr(split)
     if not loop_fling_victim then return g.notify("Error", "That Player does not exist!", 5) end
@@ -13238,17 +13160,16 @@ Callback = function(split)
     end
 end}, "Loop_Fling_Input_UI")
 
-g.create_ui_element("Button", Home_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Tools Menu (Pistol + Laser) (FE)",
-Description = "Executes the GUI used for Tools and what not.",
 Callback = function()
     g.tools_menu_for_life_together_flames_hub()
 end})
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Bring Player (FE)",
-Description = "Uses the SchoolBus Vehicle to bring the target.",
 PlaceholderText = "Username or displayname...",
+Flag = "Bring_Player_Input_UI",
 Callback = function(split)
     local target = findplr(split)
     if not target then return g.notify("Error", "Target not found.", 5) end
@@ -13282,10 +13203,10 @@ Callback = function(split)
     end
 end}, "Bring_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Kill Player (FE)",
-Description = "Uses the SchoolBus Vehicle to kill the target.",
 PlaceholderText = "Username or displayname...",
+Flag = "Kill_Player_Input_UI",
 Callback = function(split)
     local target = findplr(split)
     if not target then return g.notify("Error", "Target not found.", 5) end
@@ -13319,10 +13240,10 @@ Callback = function(split)
     end
 end}, "Kill_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Void Player (FE)",
-Description = "Uses the SchoolBus Vehicle to void the target.",
 PlaceholderText = "Username or displayname...",
+Flag = "Void_Player_Input_UI",
 Callback = function(split)
     local target = findplr(split)
     if not target then return g.notify("Error", "Target Player not found.", 5) end
@@ -13356,10 +13277,10 @@ Callback = function(split)
     end
 end}, "Void_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Skydive Player (FE)",
-Description = "Uses the SchoolBus Vehicle to skydive the target.",
 PlaceholderText = "Username or displayname...",
+Flag = "Skydive_Player_Input_UI",
 Callback = function(split)
     local target = findplr(split)
     if not target then return g.notify("Error", "Target not found.", 5) end
@@ -13394,10 +13315,11 @@ Callback = function(split)
     end
 end}, "Skydive_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Copy Avatar (FE)",
 Description = "Copies the target players entire avatar (FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Copy_Avatar_Input_UI",
 Callback = function(split)
     local Target = findplr(split)
     if not Target then return g.notify("Error", "That player doesn't exist in this game!", 5) end
@@ -13406,20 +13328,32 @@ Callback = function(split)
     copy_plr_avatar(Target)
 end}, "Copy_Avatar_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
-Name = "Copy Player Emote (FE)",
-Description = "Copies the Animation/Emote that the target Player is doing.",
+g.create_ui_element("Input", Players_Section, {
+Name = "Copy Avatar (FE)",
 PlaceholderText = "Username or displayname...",
+Flag = "Copy_Avatar_Input_UI",
+Callback = function(split)
+    local Target = findplr(split)
+    if not Target then return g.notify("Error", "That player doesn't exist in this game!", 5) end
+    if g.is_copying_avatar_already_flames then return g.notify("Warning", "Copy avatar is already running!, wait a moment, until it's done.", 5) end
+    if Target.Name == "CIippedByAura" or Target.Name == "L0CKED_1N1" then return g.notify("Error", "You can't copy this player's avatar!", 5) end
+    copy_plr_avatar(Target)
+end}, "Copy_Avatar_Input_UI")
+
+g.create_ui_element("Input", Players_Section, {
+Name = "Copy Player Emote (FE)",
+PlaceholderText = "Username or displayname...",
+Flag = "Copy_Emote_Input_UI",
 Callback = function(split)
     local target_plr = findplr(split)
     if not target_plr then return g.notify("Error", "Player not found or does not exist.", 5) end
     copy_emote_plr(target_plr)
 end}, "Copy_Emote_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Check Premium",
-Description = "Checks if a player has LifePay premium or not.",
 PlaceholderText = "Username or displayname...",
+Flag = "Check_Premium_Input_UI",
 Callback = function(split)
     local Player = findplr(split)
     if not Player then return g.notify("Error", "Player doesn't exist or left the game.", 5) end
@@ -13434,10 +13368,10 @@ Callback = function(split)
     end
 end}, "Check_Premium_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "WalkSpeed (FE)",
-Description = "Changes your WalkSpeed.",
 PlaceholderText = "Enter walkspeed...",
+Flag = "Speed_Input_UI",
 Callback = function(split)
     local New_Val = tonumber(split) or 16
     if not g.Humanoid then return g.notify("Warning", "Wait until you respawn (or reset), we think you're dead, Humanoid is missing.", 10) end
@@ -13446,10 +13380,10 @@ Callback = function(split)
     g.notify("Success", "Updated WalkSpeed to: " .. tostring(New_Val), 5)
 end}, "Speed_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "Jump Height (FE)",
-Description = "Changes your JumpHeight.",
 PlaceholderText = "Enter jump height...",
+Flag = "Jump_Height_Input_UI",
 Callback = function(split)
     local New_ValJP = tonumber(split) or 7
     if not g.Humanoid then return g.notify("Warning", "Wait until you respawn (or reset), we think you're dead, Humanoid is missing.", 10) end
@@ -13458,10 +13392,10 @@ Callback = function(split)
     g.notify("Success", "Updated JumpHeight to: " .. tostring(New_ValJP), 5)
 end}, "Jump_Height_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "Gravity (FE)",
-Description = "Changes the current Gravity value.",
 PlaceholderText = "Enter gravity value...",
+Flag = "Gravity_Input_UI",
 Callback = function(split)
     local New_Grav = tonumber(split) or 196
     if g.Workspace.Gravity == New_Grav then return g.notify("Warning", "Gravity is already: " .. tostring(New_Grav), 5) end
@@ -13469,10 +13403,10 @@ Callback = function(split)
     g.notify("Success", "Updated Gravity to: "..tostring(New_Grav), 5)
 end}, "Gravity_Input_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Noclip (FE)",
-Description = "Enables Noclip, letting you walk through everything.",
-CurrentValue = getgenv().Noclip_Enabled or false,
+Default = getgenv().Noclip_Enabled or false,
+Flag = "Noclip_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Noclip_Connection then return g.notify("Warning", "Noclip connection is active, disable Noclip and try again.", 6) end
@@ -13483,10 +13417,10 @@ Callback = function(state)
     end
 end}, "Noclip_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Invisible (FE)",
-Description = "Allows you to go Invisible (for free) via the teleport method (FE).",
-CurrentValue = getgenv().is_invisible_script_toggled or false,
+Default = getgenv().is_invisible_script_toggled or false,
+Flag = "Invisible_Toggle_UI",
 Callback = function(state)
     if state then
         if g.is_invisible_script_toggled then return g.notify("Warning", "You're already Invisible.", 5) end
@@ -13497,10 +13431,10 @@ Callback = function(state)
     end
 end}, "Invisible_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Float (FE)",
-Description = "Allows you to literally float in the air and go up and down (FE).",
-CurrentValue = getgenv().Float_Running_In_Flames_Hub or false,
+Default = getgenv().Float_Running_In_Flames_Hub or false,
+Flag = "Float_Toggle_UI",
 Callback = function(state)
     if state then
         g.start_flames_float()
@@ -13509,10 +13443,10 @@ Callback = function(state)
     end
 end}, "Float_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Spin (FE)",
-Description = "Spins your character (FE).",
-CurrentValue = getgenv().already_spinning_localplr or false,
+Default = getgenv().already_spinning_localplr or false,
+Flag = "Spin_Toggle_UI",
 Callback = function(state)
     if state then
         local speed = getgenv().Spin_Speed_Value or 5
@@ -13522,41 +13456,39 @@ Callback = function(state)
     end
 end}, "Spin_Toggle_UI")
 
-g.create_ui_element("Slider", LocalPlayer_Tab, {
+g.create_ui_element("Slider", LocalPlayer_Section, {
 Name = "Spin Speed",
-Range = {1, 100},
-Increment = 1,
-CurrentValue = getgenv().Spin_Speed_Value or 5,
+Min = 1,
+Max = 100,
+Default = getgenv().Spin_Speed_Value or 5,
+Flag = "Spin_Speed_Slider_UI",
 Callback = function(val)
     getgenv().Spin_Speed_Value = val
-    if g.already_spinning_localplr then
-        change_spin_speed(val)
-    end
+    if g.already_spinning_localplr then change_spin_speed(val) end
 end}, "Spin_Speed_Slider_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "Size Character (FE)",
-Description = "Makes your Character whatever size you put in.",
 PlaceholderText = "Enter size...",
+Flag = "Size_Input_UI",
 Callback = function(split)
     local new_size = split
     if not new_size then return end
     g.height_func_setter(new_size)
 end}, "Size_Input_UI")
 
-g.create_ui_element("Button", LocalPlayer_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Normal Size (FE)",
-Description = "Makes your Character normal size again (FE).",
 Callback = function()
     pcall(function()
         g.reset_to_original_height()
     end)
 end}, "Normal_Size_Button_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Flash Name (FE)",
-Description = "Toggles your name on and off really fast.",
-CurrentValue = getgenv().Flashing_Name_Title or false,
+Default = getgenv().Flashing_Name_Title or false,
+Flag = "Flash_Name_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Flashing_Name_Title then return g.notify("Error", "You're already running Flash Name!", 5) end
@@ -13569,10 +13501,10 @@ Callback = function(state)
     end
 end}, "Flash_Name_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Flash Invisible (FE)",
-Description = "Makes you invisible and visible really fast.",
-CurrentValue = getgenv().Invisible_Flash or false,
+Default = getgenv().Invisible_Flash or false,
+Flag = "Flash_Invis_Toggle_UI",
 Callback = function(state)
     if state then
         if g.LocalPlayer:GetAttribute("is_verified") == false then return g.notify("Error", "You do not have LifePay premium for this (will not be FE without it).", 10) end
@@ -13595,18 +13527,18 @@ Callback = function(state)
     end
 end}, "Flash_Invis_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Night Vision",
-Description = "Enables Night Vision (green vision).",
-CurrentValue = getgenv().NightVisionEnabled or false,
+Default = getgenv().NightVisionEnabled or false,
+Flag = "Night_Vision_Toggle_UI",
 Callback = function(state)
     g.night_vision(state)
 end}, "Night_Vision_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Anti Fling",
-Description = "Fully prevents you from being flung by others.",
-CurrentValue = getgenv().afEnabled or false,
+Default = getgenv().afEnabled or false,
+Flag = "Anti_Fling_Toggle_UI",
 Callback = function(state)
     if state then
         if g.afEnabled then return g.notify("Warning", "Anti-Fling is already enabled!", 5) end
@@ -13621,18 +13553,18 @@ Callback = function(state)
     end
 end}, "Anti_Fling_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Anti Void",
-Description = "Enables anti-void, preventing you from falling into the void.",
-CurrentValue = g.Anti_Void_Enabled_Bool or false,
+Default = g.Anti_Void_Enabled_Bool or false,
+Flag = "Anti_Void_Toggle_UI",
 Callback = function(state)
     anti_void(state)
 end}, "Anti_Void_Toggle_UI")
 
-g.create_ui_element("Toggle", Houses_Tab, {
+g.create_ui_element("Toggle", Houses_Section, {
 Name = "Anti House Ban (FE)",
-Description = "Prevents you from being banned/kicked/teleported out of houses.",
-CurrentValue = getgenv().never_banned_houses or false,
+Default = getgenv().never_banned_houses or false,
+Flag = "Anti_House_Ban_Toggle_UI",
 Callback = function(state)
     if state then
         if g.never_banned_houses or g.AntiTeleport then return g.notify("Error", "AntiHouseBan / AntiTeleport is already enabled.", 6) end
@@ -13704,23 +13636,20 @@ Callback = function(state)
     end
 end}, "Anti_House_Ban_Toggle_UI")
 
-g.create_ui_element("Button", LocalPlayer_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Set SpawnPoint",
-Description = "Sets a SpawnPoint where you're at, will TP you back to that spot after resetting.",
 Callback = function()
     g.set_spawnpoint(0.1)
 end}, "Set_Spawnpoint_Button_UI")
 
-g.create_ui_element("Button", LocalPlayer_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Clear SpawnPoint",
-Description = "Disables the spawnpoint and clears it.",
 Callback = function()
     g.clear_spawnpoint()
 end}, "Clear_Spawnpoint_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Rejoin",
-Description = "Makes you rejoin the current server.",
 Callback = function()
     local PlaceID = game.PlaceId
     local JobID = game.JobId
@@ -13743,25 +13672,24 @@ Callback = function()
     safe_teleport()
 end}, "Rejoin_Button_UI")
 
-g.create_ui_element("Button", Home_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "YouTube Music Player (MIGHT CRASH YOU!)",
-Description = "Lets you play music in-game, no-one hears it but you.",
 Callback = function()
     g.load_youtube_music_player_func()
 end})
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Anti Sit",
-Description = "Prevents you from sitting down.",
-CurrentValue = getgenv().Not_Ever_Sitting or false,
+Default = getgenv().Not_Ever_Sitting or false,
+Flag = "Anti_Sit_Toggle_UI",
 Callback = function(state)
     anti_sit_func(state)
 end}, "Anti_Sit_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Walk Fling (FE)",
-Description = "Enables WalkFling, flinging players you walk into.",
-CurrentValue = getgenv().walkflinging or false,
+Default = getgenv().walkflinging or false,
+Flag = "Walk_Fling_Toggle_UI",
 Callback = function(state)
     if state then
         local fn = g.FlamesLibrary.safe_func(g.StartWalkFling)
@@ -13772,18 +13700,18 @@ Callback = function(state)
     end
 end}, "Walk_Fling_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Name Spam (FE)",
-Description = "Spam changes your name with no hashtags (FE).",
-CurrentValue = getgenv().Name_Spammer_Currently_Enabled or false,
+Default = getgenv().Name_Spammer_Currently_Enabled or false,
+Flag = "Name_Spam_Toggle_UI",
 Callback = function(state)
     name_changer_premium(state)
 end}, "Name_Spam_Toggle_UI")
 
-g.create_ui_element("Toggle", Phone_Tab, {
+g.create_ui_element("Toggle", Phone_Section, {
 Name = "Block Calls (FE)",
-Description = "Enables Calls_Blocker_V3, which auto-declines all incoming calls.",
-CurrentValue = getgenv().Auto_Calls_Blocker_V3_Is_Enabled_Boolean_Flag or false,
+Default = getgenv().Auto_Calls_Blocker_V3_Is_Enabled_Boolean_Flag or false,
+Flag = "Block_Calls_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Auto_Calls_Blocker_V3_Is_Enabled_Boolean_Flag then
@@ -13837,19 +13765,20 @@ Callback = function(state)
     end
 end}, "Block_Calls_Toggle_UI")
 
-g.create_ui_element("Slider", LocalPlayer_Tab, {
+g.create_ui_element("Slider", LocalPlayer_Section, {
 Name = "Fly Speed",
-Range = {1, 200},
-Increment = 1,
-CurrentValue = getgenv().Fly_Speed_Value or 5,
+Min = 1,
+Max = 200,
+Default = getgenv().Fly_Speed_Value or 5,
+Flag = "Fly_Speed_Slider_UI",
 Callback = function(val)
     getgenv().Fly_Speed_Value = val
 end}, "Fly_Speed_Slider_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Fly (FE)",
-Description = "Enables Fly (E = up, Q = down, WASD to move).",
-CurrentValue = getgenv().FlyEnabled or false,
+Default = getgenv().FlyEnabled or false,
+Flag = "Fly_Toggle_UI",
 Callback = function(state)
     if state then
         if g.FlyEnabled then return g.notify("Error", "Fly is already enabled!", 5) end
@@ -13862,10 +13791,10 @@ Callback = function(state)
     end
 end}, "Fly_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Fly 2 - Magic Carpet (FE)",
-Description = "Enables Fly-2, the magic carpet Fly.",
-CurrentValue = getgenv().Enabled_Flying or false,
+Default = getgenv().Enabled_Flying or false,
+Flag = "Fly2_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Enabled_Flying then return g.notify("Error", "Fly-2 is already enabled!", 5) end
@@ -13878,10 +13807,10 @@ Callback = function(state)
     end
 end}, "Fly2_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Fly 3 - Adonis (FE)",
-Description = "Enables Fly-3, which is like Adonis Admin's Fly.",
-CurrentValue = g.AdonisAdminFlyEnabled or false,
+Default = g.AdonisAdminFlyEnabled or false,
+Flag = "Fly3_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Enabled_Flying then return g.notify("Error", "Fly-2 is already enabled, disable it first.", 5) end
@@ -13895,10 +13824,10 @@ Callback = function(state)
     end
 end}, "Fly3_Toggle_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Car Max Speed (FE)",
-Description = "Modifies your vehicle's max_speed attribute.",
 PlaceholderText = "Enter number...",
+Flag = "Car_Speed_Input_UI",
 Callback = function(split)
     local Vehicle = get_vehicle()
     local Hum = in_humanoid_vehicle(g.LocalPlayer)
@@ -13916,10 +13845,10 @@ Callback = function(split)
     g.notify("Error", "No car or humanoid vehicle found.", 5)
 end}, "Car_Speed_Input_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Car Max Accel (FE)",
-Description = "Modifies your vehicle's max_acc attribute.",
 PlaceholderText = "Enter number...",
+Flag = "Car_Accel_Input_UI",
 Callback = function(split)
     local val = tonumber(split)
     if not val then return g.notify("Warning", "Usage: enter a valid number.", 5) end
@@ -13935,10 +13864,10 @@ Callback = function(split)
     end
 end}, "Car_Accel_Input_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Car Accel 0-60 (FE)",
-Description = "Modifies your vehicle's acc_0_60 (take off speed) attribute.",
 PlaceholderText = "Enter number...",
+Flag = "Car_Accel_060_Input_UI",
 Callback = function(split)
     local val = tonumber(split)
     if not val then return g.notify("Warning", "Enter a valid number.", 5) end
@@ -13954,10 +13883,10 @@ Callback = function(split)
     end
 end}, "Car_Accel_060_Input_UI")
 
-g.create_ui_element("Input", Vehicle_Tab, {
+g.create_ui_element("Input", Vehicle_Section, {
 Name = "Car Turn Angle (FE)",
-Description = "Modifies your vehicle's turn_angle attribute.",
 PlaceholderText = "Enter number...",
+Flag = "Car_Turn_Angle_Input_UI",
 Callback = function(split)
     local val = tonumber(split)
     if not val then return g.notify("Warning", "Enter a valid number.", 5) end
@@ -13973,10 +13902,10 @@ Callback = function(split)
     end
 end}, "Car_Turn_Angle_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Rainbow Car (Friend, FE)",
-Description = "Makes a friend's car RGB/Rainbow (must be friends, FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Rainbow_Car_Friend_Input_UI",
 Callback = function(split)
     local Player_To_RGB_Car = findplr(split)
     if not Player_To_RGB_Car then return g.notify("Error", "Player does not exist!", 5) end
@@ -14016,10 +13945,10 @@ Callback = function(split)
     g.notify("Success", "Rainbow car enabled for: " .. Player_To_RGB_Car.Name, 5)
 end}, "Rainbow_Car_Friend_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Stop Rainbow Car (Friend, FE)",
-Description = "Disables the RGB for a friend's car (must be friends, FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Stop_Rainbow_Car_Friend_Input_UI",
 Callback = function(split)
     local Player_To_RGB_Car_Stop = findplr(split)
     if not Player_To_RGB_Car_Stop then return g.notify("Error", "Player does not exist!", 5) end
@@ -14035,9 +13964,8 @@ Callback = function(split)
     g.notify("Success", "Disabled Rainbow Vehicle for: " .. Player_To_RGB_Car_Stop.Name, 5)
 end}, "Stop_Rainbow_Car_Friend_Input_UI")
 
-g.create_ui_element("Button", Houses_Tab, {
+g.create_ui_element("Button", Houses_Section, {
 Name = "Lock Home (FE)",
-Description = "Locks your current Home (FE).",
 Callback = function()
     local is_locked = is_home_locked(g.LocalPlayer)
     if is_locked == true then
@@ -14050,9 +13978,8 @@ Callback = function()
     end
 end}, "Lock_Home_Button_UI")
 
-g.create_ui_element("Button", Houses_Tab, {
+g.create_ui_element("Button", Houses_Section, {
 Name = "Unlock Home (FE)",
-Description = "Unlocks your current Home (FE).",
 Callback = function()
     local is_locked = g.is_home_locked(g.LocalPlayer)
     if is_locked == false then
@@ -14065,18 +13992,18 @@ Callback = function()
     end
 end}, "Unlock_Home_Button_UI")
 
-g.create_ui_element("Toggle", Houses_Tab, {
+g.create_ui_element("Toggle", Houses_Section, {
 Name = "Auto Lock Home (FE)",
-Description = "Automatically locks your home when it gets unlocked (FE).",
-CurrentValue = getgenv().LockHomeLoop or false,
+Default = getgenv().LockHomeLoop or false,
+Flag = "Auto_Lock_Home_Toggle_UI",
 Callback = function(state)
     g.keep_home_locked(state)
 end}, "Auto_Lock_Home_Toggle_UI")
 
-g.create_ui_element("Input", Houses_Tab, {
+g.create_ui_element("Input", Houses_Section, {
 Name = "Lock Player Home (FE)",
-Description = "Locks a friend's house (must be friends, FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Lock_Player_Home_Input_UI",
 Callback = function(split)
     local plr_to_lock = findplr(split)
     if not plr_to_lock then return g.notify("Error", "Player not found or does not exist.", 5) end
@@ -14094,10 +14021,10 @@ Callback = function(split)
     end
 end}, "Lock_Player_Home_Input_UI")
 
-g.create_ui_element("Input", Houses_Tab, {
+g.create_ui_element("Input", Houses_Section, {
 Name = "Unlock Player Home (FE)",
-Description = "Unlocks a friend's house (must be friends, FE).",
 PlaceholderText = "Username or displayname...",
+Flag = "Unlock_Player_Home_Input_UI",
 Callback = function(split)
     local plr_to_unlock = findplr(split)
     if not plr_to_unlock then return g.notify("Error", "Player not found or does not exist.", 5) end
@@ -14115,20 +14042,20 @@ Callback = function(split)
     end
 end}, "Unlock_Player_Home_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Friend Player",
-Description = "Sends a friend request to the specified player in this server.",
 PlaceholderText = "Username or displayname...",
+Flag = "Friend_Player_Input_UI",
 Callback = function(split)
     local target_friend_plr = findplr(split)
     if not target_friend_plr then return g.notify("Error", "That player does not exist or has left the game.", 6) end
     g.friend_user_async_function(target_friend_plr)
 end}, "Friend_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Unfriend Player",
-Description = "Removes a friend request / unfriends the specified player in this server.",
 PlaceholderText = "Username or displayname...",
+Flag = "Unfriend_Player_Input_UI",
 Callback = function(split)
     local target_unfriend_plr = findplr(split)
     if not target_unfriend_plr then return g.notify("Error", "That player does not exist or has left the game.", 6) end
@@ -14136,19 +14063,19 @@ Callback = function(split)
 end}, "Unfriend_Player_Input_UI")
 
 if executor_contains("delta") then
-    g.create_ui_element("Toggle", Extras_Tab, {
+    g.create_ui_element("Toggle", Home_Section, {
     Name = "Toggle Delta Icon",
-    Description = "Hides the Delta executor button icon (if you're using Delta).",
-    CurrentValue = getgenv().Is_Deltas_Icon_Currently_Toggled or false,
+    Default = getgenv().Is_Deltas_Icon_Currently_Toggled or false,
+    Flag = "Hide_Delta_Toggle_UI",
     Callback = function(state)
         g.toggle_delta_image_button_flames_hub(not state)
     end}, "Hide_Delta_Toggle_UI")
 end
 
-g.create_ui_element("Toggle", Phone_Tab, {
+g.create_ui_element("Toggle", Phone_Section, {
 Name = "Anti RGB Phone",
-Description = "Enables Anti RGB Phone, which hides other RGB Phone Models.",
-CurrentValue = getgenv().HidePhoneModels or false,
+Default = getgenv().HidePhoneModels or false,
+Flag = "Anti_RGB_Phone_Toggle_UI",
 Callback = function(state)
     if state then
         if g.HidePhoneModels then return g.notify("Warning", "Anti RGB Phone is already enabled.", 5) end
@@ -14161,34 +14088,34 @@ Callback = function(state)
     end
 end}, "Anti_RGB_Phone_Toggle_UI")
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "FPS Boost",
-Description = "Lag reducer that boosts your FPS.",
-CurrentValue = getgenv().ultimate_lag_reducer or false,
+Default = getgenv().ultimate_lag_reducer or false,
+Flag = "FPS_Boost_Toggle_UI",
 Callback = function(state)
     g.FlamesLagReducerFunc(state)
 end}, "FPS_Boost_Toggle_UI")
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Always Show Titles",
-Description = "Always shows everyone's titles and bios when they chat.",
-CurrentValue = g.always_show_title_above_head or false,
+Default = g.always_show_title_above_head or false,
+Flag = "Always_Show_Titles_Toggle_UI",
 Callback = function(state)
     g.always_show_title_of_player_regardless_of_chats(state)
 end}, "Always_Show_Titles_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "RGB Skin (FE)",
-Description = "Enables RGB Skin, making your skintone flash rainbow colors.",
-CurrentValue = getgenv().rainbow_skintone_currently_enabled or false,
+Default = getgenv().rainbow_skintone_currently_enabled or false,
+Flag = "RGB_Skin_Toggle_UI",
 Callback = function(state)
     rainbow_skin(state)
 end}, "RGB_Skin_Toggle_UI")
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "RGB Tool (FE)",
-Description = "Enables RGB Tool, making your currently held tool flash rainbow colors.",
-CurrentValue = getgenv().Rainbow_Tools_FE or false,
+Default = getgenv().Rainbow_Tools_FE or false,
+Flag = "RGB_Tool_Toggle_UI",
 Callback = function(state)
     if state then
         if g.Rainbow_Tools_FE then return g.notify("Warning", "Rainbow Tool is already enabled.", 5) end
@@ -14199,10 +14126,10 @@ Callback = function(state)
     end
 end}, "RGB_Tool_Toggle_UI")
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Anti Fire",
-Description = "Automatically destroys any Fire being spawned into the game.",
-CurrentValue = getgenv().firehidden or false,
+Default = getgenv().firehidden or false,
+Flag = "Anti_Fire_Toggle_UI",
 Callback = function(state)
     if state then
         if g.firehidden then return g.notify("Warning", "Flames Anti-Fire Spammer V3 is already enabled.", 6) end
@@ -14217,49 +14144,48 @@ Callback = function(state)
 end}, "Anti_Fire_Toggle_UI")
 
 if priv_server_is_in == true then
-    g.create_ui_element("Toggle", PrivServer_Tab, {
+    g.create_ui_element("Toggle", PrivServer_Section, {
     Name = "Stop Time (FE)",
-    Description = "Stops the current time (priv server only, FE).",
-    CurrentValue = getgenv().is_time_currently_stopped_priv_server or false,
+    Default = getgenv().is_time_currently_stopped_priv_server or false,
+    Flag = "Stop_Time_Toggle_UI",
     Callback = function(state)
         stop_time_toggle(state)
     end}, "Stop_Time_Toggle_UI")
 
-    g.create_ui_element("Toggle", PrivServer_Tab, {
+    g.create_ui_element("Toggle", PrivServer_Section, {
     Name = "Flash Time (FE)",
-    Description = "Makes the current time flash fast (priv server only, FE).",
-    CurrentValue = getgenv().flashing_time_fe_toggle or false,
+    Default = getgenv().flashing_time_fe_toggle or false,
+    Flag = "Flash_Time_Toggle_UI",
     Callback = function(state)
     flash_time_toggle(state)
     end}, "Flash_Time_Toggle_UI")
 
-    g.create_ui_element("Toggle", PrivServer_Tab, {
+    g.create_ui_element("Toggle", PrivServer_Section, {
     Name = "Flash Weather (FE)",
-    Description = "Makes the current weather flash fast (priv server only, FE).",
-    CurrentValue = getgenv().changing_weather_on_repeat or false,
+    Default = getgenv().changing_weather_on_repeat or false,
+    Flag = "Flash_Weather_Toggle_UI",
     Callback = function(state)
     g.weather_flasher_loop(state)
     end}, "Flash_Weather_Toggle_UI")
 
-    g.create_ui_element("Toggle", PrivServer_Tab, {
+    g.create_ui_element("Toggle", PrivServer_Section, {
     Name = "Server Lock (FE)",
-    Description = "Locks your private server so nobody else can join (priv server only).",
-    CurrentValue = getgenv().server_lock_enabled or false,
+    Default = getgenv().server_lock_enabled or false,
+    Flag = "Server_Lock_Toggle_UI",
     Callback = function(state)
         server_lock_toggle(state)
     end}, "Server_Lock_Toggle_UI")
 
-    g.create_ui_element("Button", PrivServer_Tab, {
+    g.create_ui_element("Button", PrivServer_Section, {
     Name = "Server Lock Manager",
-    Description = "Opens the server lock whitelist GUI (priv server only, FE).",
     Callback = function()
         server_lock_whitelist_gui()
     end}, "Server_Lock_Manager_Button_UI")
 
-    g.create_ui_element("Input", PrivServer_Tab, {
+    g.create_ui_element("Input", PrivServer_Section, {
     Name = "Kick Player (FE)",
-    Description = "Kicks a player from your private server (FE).",
     PlaceholderText = "Username or displayname...",
+    Flag = "Kick_Player_Input_UI",
     Callback = function(split)
         local target_plr = findplr(split)
         if not target_plr then return g.notify("Error", "That player does not exist or has left.", 5) end
@@ -14269,10 +14195,10 @@ if priv_server_is_in == true then
         g.notify("Success", "Kicked Player: " .. tostring(target_plr), 5)
     end}, "Kick_Player_Input_UI")
 
-    g.create_ui_element("Input", PrivServer_Tab, {
+    g.create_ui_element("Input", PrivServer_Section, {
     Name = "Ban Player (FE)",
-    Description = "Bans a player from your private server (FE).",
     PlaceholderText = "Username or displayname...",
+    Flag = "Ban_Player_Input_UI",
     Callback = function(split)
         if not is_localplayer_server_owner() then
             local admin_player = get_server_admin_player()
@@ -14288,10 +14214,10 @@ if priv_server_is_in == true then
         end
     end}, "Ban_Player_Input_UI")
 
-    g.create_ui_element("Input", PrivServer_Tab, {
+    g.create_ui_element("Input", PrivServer_Section, {
     Name = "Unban Player (FE)",
-    Description = "Unbans a player from your private server (FE).",
     PlaceholderText = "Username or displayname...",
+    Flag = "Unban_Player_Input_UI",
     Callback = function(split)
         if not is_localplayer_server_owner() then
             local admin_player = get_server_admin_player()
@@ -14308,18 +14234,18 @@ if priv_server_is_in == true then
     end}, "Unban_Player_Input_UI")
 end
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "RGB Street Lights",
-Description = "Enables RGB StreetLights, flashing rainbow street lights (visual only, not FE).",
-CurrentValue = getgenv().RGB_Street_Lights_NightTime_Loop or false,
+Default = getgenv().RGB_Street_Lights_NightTime_Loop or false,
+Flag = "RGB_Street_Lights_Toggle_UI",
 Callback = function(state)
 toggle_rgb_streetlights(state)
 end}, "RGB_Street_Lights_Toggle_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Admin Player (FE)",
-Description = "Adds a friend to the FE commands whitelist.",
 PlaceholderText = "Username or displayname...",
+Flag = "Admin_Player_Input_UI",
 Callback = function(split)
     local Player = findplr(split)
     if not Player then return g.notify("Error", "Player does not exist!", 5) end
@@ -14334,10 +14260,10 @@ Callback = function(split)
     g.notify("Success", "Added " .. tostring(Player.Name) .. " to the admin's table!", 5)
 end}, "Admin_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "UnAdmin Player (FE)",
-Description = "Removes a friend's FE command access.",
 PlaceholderText = "Username or displayname...",
+Flag = "Unadmin_Player_Input_UI",
 Callback = function(split)
     local Player = findplr(split)
     if not Player then return g.notify("Error", "Player does not exist!", 5) end
@@ -14359,10 +14285,10 @@ Callback = function(split)
     end
 end}, "Unadmin_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Blacklist Player (FE)",
-Description = "Blacklists your friend from using YOUR admin commands.",
 PlaceholderText = "Username or displayname...",
+Flag = "Blacklist_Player_Input_UI",
 Callback = function(split)
     local Player = findplr(split)
     if not Player then return end
@@ -14381,10 +14307,10 @@ Callback = function(split)
     g.notify("Success", "Blacklisted: " .. tostring(Name), 5)
 end}, "Blacklist_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Unblacklist Player (FE)",
-Description = "Removes your friend from your admin blacklist.",
 PlaceholderText = "Username or displayname...",
+Flag = "Unblacklist_Player_Input_UI",
 Callback = function(split)
     local Player = findplr(split)
     if not Player then return end
@@ -14399,10 +14325,10 @@ Callback = function(split)
     end
 end}, "Unblacklist_Player_Input_UI")
 
-g.create_ui_element("Input", Players_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Rainbow Time (Friend, FE)",
-Description = "Sets the rainbow delay speed for a whitelisted friend's car.",
 PlaceholderText = "Username number (e.g. PlayerName 1)...",
+Flag = "Rainbow_Time_Input_UI",
 Callback = function(split)
     local parts = split and split:split(" ") or {}
     local Player = findplr(parts[1])
@@ -14417,10 +14343,10 @@ Callback = function(split)
     g.notify("Success", "Set rainbow delay for " .. Player.Name .. " to " .. new_delay, 5)
 end}, "Rainbow_Time_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Walk Fling Whitelist",
-Description = "Whitelists a player so WalkFling won't fling them.",
 PlaceholderText = "Username or displayname...",
+Flag = "Walk_Fling_Whitelist_Input_UI",
 Callback = function(split)
     local plr = findplr(split)
     if typeof(plr) ~= "Instance" or not plr:IsA("Player") then
@@ -14429,10 +14355,10 @@ Callback = function(split)
     g.AddToWalkFlingWhitelist(plr)
 end}, "Walk_Fling_Whitelist_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", Players_Section, {
 Name = "Walk Fling Unwhitelist",
-Description = "Removes a player from the WalkFling whitelist.",
 PlaceholderText = "Username or displayname...",
+Flag = "Walk_Fling_Unwhitelist_Input_UI",
 Callback = function(split)
     local plr = findplr(split)
     if typeof(plr) ~= "Instance" or not plr:IsA("Player") then
@@ -14441,72 +14367,62 @@ Callback = function(split)
     g.RemoveFromWalkFlingWhitelist(plr)
 end}, "Walk_Fling_Unwhitelist_Input_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Home_Section, {
 Name = "Get Priv Server Owner",
-Description = "Tells you who owns the current private server.",
 Callback = function()
     notify_priv_server_owner()
 end}, "Priv_Server_Owner_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Config Manager",
-Description = "Opens the Configuration Manager GUI.",
 Callback = function()
     toggle_config_manager(true)
 end}, "Config_Manager_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Streamer Mode",
-Description = "Gives you a GUI to hide your profile.",
 Callback = function()
     streamer_mode_script()
 end}, "Streamer_Mode_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Annoyer GUI",
-Description = "Opens the GUI that lets you pick and toggle annoying players (FE).",
 Callback = function()
     annoyance_GUI()
 end}, "Annoy_GUI_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "Car Stats GUI",
-Description = "Shows vehicles you can spawn with preset settings.",
 Callback = function()
     vehicle_stats_viewer_GUI()
 end}, "Car_Stats_GUI_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Vehicle_Section, {
 Name = "All Cars GUI",
-Description = "Opens the GUI list showing all available car names.",
 Callback = function()
     car_listing_gui()
 end}, "All_Cars_GUI_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Free Emotes GUI",
-Description = "Opens the Free Emotes GUI.",
 Callback = function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Emotes_Backup.lua"))()
 end}, "Free_Emotes_GUI_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Phone_Section, {
 Name = "Message GUI",
-Description = "Let's you send messages with the in-game Phone easily.",
 Callback = function()
     send_msg_menu()
 end}, "Message_GUI_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Workspace Editor",
-Description = "Let's you edit parts & models in the workspace.",
 Callback = function()
     g.workspace_editor_script_GUI()
 end}, "Workspace_Editor_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Debugger",
-Description = "Let's you test if functions are working correctly in Flames Hub.",
 Callback = function()
     if g.Flames_Debugger_Function_Tester_GUI then
         pcall(function() g.Flames_Debugger_Function_Tester_GUI() end)
@@ -14515,52 +14431,46 @@ Callback = function()
     end
 end}, "Debugger_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Outfits Manager (Save outfits GUI)",
-Description = "Opens the Outfits GUI, letting you save as many outfits as you want.",
 Callback = function()
     save_outfits_GUI()
 end}, "Outfits_Manager_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Chat Bypass",
-Description = "Executes a chat script, so you can type freely to other users (FE).",
 Callback = function()
     g.load_workaround_script()
 end}, "Chat_Bypass_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Save Emote",
-Description = "Saves your currently playing animation to the Flames Emotes GUI.",
 Callback = function()
     g.save_copied_plrs_emote()
 end}, "Save_Emote_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Infinite Yield",
-Description = "Executes regular Infinite Yield.",
 Callback = function()
     infinite_yield()
 end}, "Infinite_Yield_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Infinite Premium",
-Description = "Executes Infinite Premium.",
 Callback = function()
     infinite_premium()
 end}, "Infinite_Premium_Button_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Nameless Admin",
-Description = "Executes Nameless Admin (FE Admin).",
 Callback = function()
     flames_nameless_admin_ver()
 end}, "Nameless_Admin_Button_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Flames (FE)",
-Description = "Spams Fire all around you on loop.",
-CurrentValue = getgenv().spamming_all_that_fire or false,
+Default = getgenv().spamming_all_that_fire or false,
+Flag = "Flames_Toggle_UI",
 Callback = function(state)
     if state then
         if g.spamming_all_that_fire then return g.notify("Warning", "You're already spamming Fire!", 5) end
@@ -14574,10 +14484,10 @@ Callback = function(state)
     end
 end}, "Flames_Toggle_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", Extras_Section, {
 Name = "Spawn Fire (FE)",
-Description = "Spawns Fire with custom amount (requires premium).",
 PlaceholderText = "Enter amount...",
+Flag = "Spawn_Fire_Input_UI",
 Callback = function(split)
     local amount = tonumber(split) or 5
     local is_verified = g.LocalPlayer:GetAttribute("is_verified")
@@ -14593,10 +14503,10 @@ Callback = function(split)
     end
 end}, "Spawn_Fire_Input_UI")
 
-g.create_ui_element("Toggle", Extras_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Sign Spam (FE)",
-Description = "Spams the text on your Tool Sign (FE).",
-CurrentValue = getgenv().ToolChanger_FE or false,
+Default = getgenv().ToolChanger_FE or false,
+Flag = "Sign_Spam_Toggle_UI",
 Callback = function(state)
     if state then
         if g.ToolChanger_FE then return g.notify("Warning", "Sign spammer is already enabled!", 5) end
@@ -14607,9 +14517,8 @@ Callback = function(state)
     end
 end}, "Sign_Spam_Toggle_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Collect All NBA Props (FE)",
-Description = "Collects all NBA event items so you can get the badge instantly (FE).",
 Callback = function()
     local attr = g.LocalPlayer:GetAttribute("NBA_HUNT_PROGRESS")
     if not attr then return end
@@ -14619,25 +14528,24 @@ Callback = function()
     g.collect_all_nba_props()
 end}, "Collect_All_NBA_Button_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Anti Outfit Copier (FE)",
-Description = "Prevents others from copying your outfit (FE).",
-CurrentValue = getgenv().anti_outfit_stealer or false,
+Default = getgenv().anti_outfit_stealer or false,
+Flag = "Anti_Outfit_Copier_Toggle_UI",
 Callback = function(state)
     anti_outfit_copier(state)
 end}, "Anti_Outfit_Copier_Toggle_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", Extras_Section, {
 Name = "Mute Tools",
-Description = "Mutes all Boomboxes, Speakers and other tools in the game that play music.",
-CurrentValue = getgenv().autosilence or false,
+Default = getgenv().autosilence or false,
+Flag = "Mute_Tools_Toggle_UI",
 Callback = function(state)
     mute_all_tools(state)
 end}, "Mute_Tools_Toggle_UI")
 
-g.create_ui_element("Dropdown", Home_Tab, {
+g.create_ui_element("Dropdown", LocalPlayer_Section, {
 Name = "Emotes",
-Description = "Play any emote on your character (FE).",
 Options = {
     "Needy",
     "Griddy",
@@ -14664,8 +14572,8 @@ Options = {
     "Motion",
     "Tuff",
 },
-CurrentOption = {},
-MultipleOptions = false,
+DefaultItemSelected = "None",
+ItemSelecting = false,
 Callback = function(selected)
     local emote_map = {
         ["Needy"]           = "needy_twerk",
@@ -14698,17 +14606,16 @@ Callback = function(selected)
     do_emote(emote)
 end}, "Emotes_Dropdown_UI")
 
-g.create_ui_element("Button", Home_Tab, {
+g.create_ui_element("Button", LocalPlayer_Section, {
 Name = "Stop Emoting",
-Description = "Disables any emote you are currently doing.",
 Callback = function()
     g.disable_emoting_script()
 end}, "No_Emote_Button_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "RP Name (FE)",
-Description = "Changes your roleplay name.",
 PlaceholderText = "Enter new RP name...",
+Flag = "RP_Name_Input_UI",
 Callback = function(text)
     local max_len = 19
     if #text > max_len and writefile then
@@ -14718,10 +14625,10 @@ Callback = function(text)
     change_RP_Name(text)
 end}, "RP_Name_Input_UI")
 
-g.create_ui_element("Input", LocalPlayer_Tab, {
+g.create_ui_element("Input", LocalPlayer_Section, {
 Name = "RP Bio (FE)",
-Description = "Changes your roleplay bio.",
 PlaceholderText = "Enter new RP bio...",
+Flag = "RP_Bio_Input_UI",
 Callback = function(text)
     local max_len = 49
     if #text > max_len and writefile then
@@ -14731,24 +14638,23 @@ Callback = function(text)
     change_bio(text)
 end}, "RP_Bio_Input_UI")
 
-g.create_ui_element("Button", Extras_Tab, {
+g.create_ui_element("Button", Extras_Section, {
 Name = "Performance GUI",
-Description = "Gives you the menu showing your FPS, ping, etc.",
 Callback = function()
     LoadPerformanceStatsGUI()
 end}, "Stats_GUI_Button_UI")
 
-g.create_ui_element("Toggle", LocalPlayer_Tab, {
+g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Two Tone Skin (FE)",
-Description = "Makes your skintone swap between two colors on a loop (FE).",
-CurrentValue = getgenv().Two_Tone_Skin_Tone_Loop_Toggled or false,
+Default = getgenv().Two_Tone_Skin_Tone_Loop_Toggled or false,
+Flag = "Two_Tone_Skin_Toggle_UI",
 Callback = function(state)
     g.two_tone_skin(state)
 end}, "Two_Tone_Skin_Toggle_UI")
 
-g.create_ui_element("ColorPicker", Vehicle_Tab, {
+g.create_ui_element("ColorPicker", Vehicle_Section, {
 Name = "Car Color (FE)",
-Color = Color3.fromRGB(255, 0, 0),
+Default = Color3.fromRGB(255, 0, 0),
 Flag = "Car_Color_Picker_UI",
 Callback = function(color)
     local vehicle = get_vehicle()
@@ -14756,10 +14662,10 @@ Callback = function(color)
     change_vehicle_color(color, vehicle)
 end}, "Car_Color_Picker_UI")
 
-g.create_ui_element("Toggle", Players_Tab, {
+g.create_ui_element("Toggle", Players_Section, {
 Name = "Player ESP",
-Description = "Enables Player ESP, allowing you to see any player through walls.",
-CurrentValue = getgenv().Flames_Hub_Player_ESP_Core_Has_Been_Enabled or false,
+Default = getgenv().Flames_Hub_Player_ESP_Core_Has_Been_Enabled or false,
+Flag = "Player_ESP_Toggle_UI",
 Callback = function(state)
     if state then
         g.enable_player_esp()
@@ -14768,10 +14674,10 @@ Callback = function(state)
     end
 end}, "Player_ESP_Toggle_UI")
 
-g.create_ui_element("Toggle", Players_Tab, {
+g.create_ui_element("Toggle", Players_Section, {
 Name = "Tracer ESP",
-Description = "Enables Tracer ESP, putting a line on every player anywhere.",
-CurrentValue = getgenv().tracer_esp_currently_running_flag_Flames_Hub or false,
+Default = getgenv().tracer_esp_currently_running_flag_Flames_Hub or false,
+Flag = "Tracer_ESP_Toggle_UI",
 Callback = function(state)
     if state then
         g.enable_tracers()
