@@ -10,6 +10,7 @@ local Players = g.Players or cloneref and cloneref(game:GetService("Players")) o
 local LocalPlayer = g.LocalPlayer or Players.LocalPlayer or game.Players.LocalPlayer
 local UserInputService = g.UserInputService or cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
 local MarketplaceService = g.MarketplaceService or cloneref and cloneref(game:GetService("MarketplaceService")) or game:GetService("MarketplaceService")
+local CoreGui = g.CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
 local base_url = "https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Experiences/"
 local function get_game_name_by_place_id(place_id)
     if not place_id then return end
@@ -171,6 +172,13 @@ local Section2 = Page1:CreateSection("Game TPs")
 local Section3 = Page1:CreateSection("Extras")
 local function destroy_current_ui()
     if not flames_ui then return end
+    local atlas_main_ui = CoreGui:FindFirstChild("Atlas")
+    if atlas_main_ui and atlas_main_ui:IsA("ScreenGui") then
+        local Main = atlas_main_ui:FindFirstChild("Main")
+        if Main and Main:IsA("Frame") then
+            pcall(function() Main.Frame.Visible = false end)
+        end
+    end
     --pcall(function() flames_ui:Destroy() end)
     getgenv().Looping_Window_Name_On_Flames_Hubs_Loader = false
     getgenv().spawned_change_window_name_tasked_loop = false
