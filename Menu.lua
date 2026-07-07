@@ -176,7 +176,7 @@ local function destroy_current_ui()
     if atlas_main_ui and atlas_main_ui:IsA("ScreenGui") then
         local Main = atlas_main_ui:FindFirstChild("Main")
         if Main and Main:IsA("Frame") then
-            pcall(function() Main.Frame.Visible = false end)
+            pcall(function() Main.Visible = false end)
         end
     end
     --pcall(function() flames_ui:Destroy() end)
