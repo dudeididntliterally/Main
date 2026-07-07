@@ -171,7 +171,7 @@ local Section2 = Page1:CreateSection("Game TPs")
 local Section3 = Page1:CreateSection("Extras")
 local function destroy_current_ui()
     if not flames_ui then return end
-    flames_ui:Destroy()
+    --pcall(function() flames_ui:Destroy() end)
     getgenv().Looping_Window_Name_On_Flames_Hubs_Loader = false
     getgenv().spawned_change_window_name_tasked_loop = false
     if getgenv().window_changing_main_automatic_loop_task then
