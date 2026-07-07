@@ -13,7 +13,7 @@ end
 
 local g = getgenv()
 local Raw_Version = "V9.1.0"
-g.Script_Version = tostring(Raw_Version).."-LifeHub"
+getgenv().Script_Version = tostring(Raw_Version).."-LifeHub"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 g.colors = g.colors or {
@@ -13160,6 +13160,12 @@ Callback = function(split)
     end
 end}, "Loop_Fling_Input_UI")
 
+g.create_ui_element("Button", Players_Section, {
+Name = "Loop Fling Player (broken)",
+Callback = function()
+    g.stop_loopfling()
+end})
+
 g.create_ui_element("Button", Extras_Section, {
 Name = "Tools Menu (Pistol + Laser) (FE)",
 Callback = function()
@@ -14768,7 +14774,7 @@ local function Notify(msg, dur)
     end)
 end
 
---[[g.lta_updater_running = g.lta_updater_running or false
+g.lta_updater_running = g.lta_updater_running or false
 g.lta_updater_thread_id = (g.lta_updater_thread_id or 0) + 1
 local thread_id = g.lta_updater_thread_id
 if not g.lta_updater_running then
@@ -14776,17 +14782,13 @@ if not g.lta_updater_running then
     task.spawn(function()
         while g.lta_updater_running and thread_id == g.lta_updater_thread_id do
             task.wait(20)
-            local local_version = tostring(g.Script_Version or ""):gsub("%s+", "")
-            if local_version == "" then
-                continue
-            end
-
+            local local_version = clean(tostring(getgenv().Script_Version))
+            if local_version == "" then continue end
             local remote_version = ws_get_version()
-            if not remote_version or remote_version == "" then
-                continue
-            end
-
+            if not remote_version or remote_version == "" then continue end
             if remote_version ~= local_version then
+                print_bytes("Local", local_version)
+                print_bytes("Remote", remote_version)
                 g.lta_updater_running = false
                 Notify("[UPDATE DETECTED]:\nLocal: " .. local_version .. "\nServer: " .. remote_version .. "\nReloading...", 6)
                 task.wait(0.6)
@@ -14800,4 +14802,4 @@ if not g.lta_updater_running then
             end
         end
     end)
-end--]]
+end
