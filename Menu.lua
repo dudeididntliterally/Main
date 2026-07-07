@@ -9,7 +9,24 @@ local TeleportService = g.TeleportService or cloneref and cloneref(game:GetServi
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local LocalPlayer = g.LocalPlayer or Players.LocalPlayer or game.Players.LocalPlayer
 local UserInputService = g.UserInputService or cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
+local MarketplaceService = g.MarketplaceService or cloneref and cloneref(game:GetService("MarketplaceService")) or game:GetService("MarketplaceService")
 local base_url = "https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Experiences/"
+local function get_game_name_by_place_id(place_id)
+    if not place_id then return end
+    local conv_str = MarketplaceService:GetProductInfo(place_id)
+    if conv_str and typeof(conv_str) == "table" and conv_str.Name then
+        return conv_str.Name
+    elseif conv_str and typeof(conv_str) == "string" then
+        return conv_str.Name
+    else
+        if g.notify then
+            return g.notify("Error", "The game either does not exist anymore or did not return anything from Roblox's API!", 5)
+        else
+            return warn("Game Name is not a string or was returned as nil!")
+        end
+    end
+end
+
 local scriptstoload = {
     ["Tower Of Misery"] = {
         id = 4954752502,
@@ -27,10 +44,11 @@ local scriptstoload = {
         id = 205224386,
         link = base_url .. "205224386.lua"
     },
-    --[[["Apartment Hangout Spot"] = {
+    -- [[ Before it got banned / shutdown / taken down, it was called 'Banned Apartments', so I imagine something got them shutdown, not sure though, but all I know is the game is gone. ]] --
+    ["Apartment Hangout Spot"] = {
         id = 108873247414429,
         link = base_url .. "108873247414429.lua"
-    },--]]
+    },
     ["The Lanes"] = {
         id = 1333478699,
         link = base_url .. "1333478699.lua"
@@ -139,54 +157,21 @@ local function GenerateRandomCEFloat(min_exp, max_exp)
     return formatted .. "E" .. exp_sign .. math.abs(exponent)
 end
 
-local flames_ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Nebula.lua"))()
-local Window = flames_ui:CreateWindow({
-    Name = "Flames Hub | "..tostring(GenerateRandomCEFloat(-9, 9)),
-    Subtitle = "Flames Hub | Script Loader.",
-    LogoID = "0",
-    LoadingEnabled = true,
-    LoadingTitle = "Flames Hub | Presents",
-    LoadingSubtitle = "by Flames Hub.",
-    ConfigSettings = {
-        RootFolder = nil,
-        ConfigFolder = "FlamesHub_Main_Menu_Configuration"
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "Flames Hub | Key System",
-        Subtitle = "",
-        Note = "Welcome to Flames Hub | Game Loader!",
-        SaveInRoot = false,
-        SaveKey = true,
-        Key = {"Example Key"},
-        SecondAction = {
-            Enabled = false,
-            Type = "Link",
-            Parameter = ""
-        }
-    }
+local flames_ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Atlas_UI.lua"))()
+local Window = flames_ui.new({
+	Name = "Flames Hub | Script Loader",
+	ConfigFolder = "Flames_Hub_Menu",
+	Color = Color3.fromRGB(21, 103, 251),
+	Bind = "RightShift",
 })
-wait(0.1)
-if not getgenv().Looping_Window_Name_On_Flames_Hubs_Loader then
-    getgenv().Looping_Window_Name_On_Flames_Hubs_Loader = true
-    getgenv().spawned_change_window_name_tasked_loop = true
-    getgenv().window_changing_main_automatic_loop_task = task.spawn(function()
-        while getgenv().spawned_change_window_name_tasked_loop == true do
-            task.wait(0.01)
-            Window:Set({Name = "Flames Hub | " .. tostring(GenerateRandomCEFloat(-9, 9)),})
-        end
-    end)
-end
 g.Buttons = g.Buttons or {}
-local Tab1 = Window:CreateTab({Name = "🏡 Home 🏡", Icon = "view_in_ar", ImageSource = "Material", ShowTitle = true})
-local Section1 = Tab1:CreateSection("Section | Home Page")
-local Tab2 = Window:CreateTab({Name = "🎮 Game TPs 🎮", Icon = "view_in_ar", ImageSource = "Material", ShowTitle = true})
-local Section2 = Tab2:CreateSection("Section | Game TPs Page")
-local Tab3 = Window:CreateTab({Name = "⭐ Extras ⭐", Icon = "view_in_ar", ImageSource = "Material", ShowTitle = true})
-local Section3 = Tab3:CreateSection("Section | Extras Page")
+local Page1 = Window:CreatePage("Main")
+local Section1 = Page1:CreateSection("Home")
+local Section2 = Page1:CreateSection("Game TPs")
+local Section3 = Page1:CreateSection("Extras")
 local function destroy_current_ui()
     if not flames_ui then return end
-    flames_ui:Destroy_UI()
+    flames_ui:Destroy()
     getgenv().Looping_Window_Name_On_Flames_Hubs_Loader = false
     getgenv().spawned_change_window_name_tasked_loop = false
     if getgenv().window_changing_main_automatic_loop_task then
@@ -207,7 +192,7 @@ local function get_nameless_admin_loaded()
     return false
 end
 wait(0.2)
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Flames Hub (Universal)",
 Description = "Loads the universal version of Flames Hub.",
 Callback = function()
@@ -216,7 +201,7 @@ Callback = function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Scripts/Universal.lua"))()
 end,})
 
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Free Emotes GUI",
 Description = "Loads the Flames Hub | Free Emotes GUI script.",
 Callback = function()
@@ -228,7 +213,7 @@ Callback = function()
 	end
 end})
 
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Condo Games Destroyer",
 Description = "Loads the Condo Games Destroyer script.",
 Callback = function()
@@ -237,7 +222,7 @@ Callback = function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Scripts/GOAT_Games_GUI.lua"))()
 end,})
 
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Infinite Yield FE",
 Description = "Loads Infinite Yield FE (normal version).",
 Callback = function()
@@ -246,7 +231,7 @@ Callback = function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
 end,})
 
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Infinite Premium FE",
 Description = "Loads Infinite Premium FE (my version).",
 Callback = function()
@@ -255,7 +240,7 @@ Callback = function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Infinite_Premium.lua"))()
 end,})
 
-Tab3:CreateButton({
+Section3:CreateButton({
 Name = "Nameless Admin FE",
 Description = "Loads Nameless Admin FE.",
 Callback = function()
@@ -280,7 +265,7 @@ for name, dude in pairs(scriptstoload) do
     local id_for_name = typeof(dude.id) == "table" and dude.id[1] or dude.id
     local name_of_game_proper = get_place_name(id_for_name)
 
-    g.Buttons[strname] = Tab1:CreateButton({
+    g.Buttons[strname] = Section1:CreateButton({
     Name = name,
     Description = "Runs the " .. name .. " script. Place ID: " .. id_display,
     Callback = function()
@@ -299,15 +284,18 @@ end
 
 for name, schnawg in pairs(scriptstoload) do
     if is_excluded(schnawg.id) then continue end
+    local id_for_lookup = typeof(schnawg.id) == "table" and schnawg.id[1] or schnawg.id
     local id_display = typeof(schnawg.id) == "table" and tostring(schnawg.id[1]) or tostring(schnawg.id)
-    g.Buttons[name] = Tab2:CreateButton({
-    Name = "Teleport To Game: "..tostring(name),
-    Description = "Teleports you to "..tostring(name)..". Place ID: "..tostring(id_display),
+    local lookup_ok, real_name = pcall(get_game_name_by_place_id, id_for_lookup)
+    if not lookup_ok or not real_name or typeof(real_name) ~= "string" then real_name = name end
+    g.Buttons[name] = Section2:CreateButton({
+    Name = "Teleport To Game: "..tostring(real_name),
+    Description = "Teleports you to "..tostring(real_name)..". Place ID: "..tostring(id_display),
     Callback = function()
         local idkok = type(schnawg.id) == "table" and schnawg.id[1] or schnawg.id
         if not idkok then return end
         if matcheswhat(schnawg.id, game.PlaceId) then
-            g.notify("Info", "You are already in: "..tostring(name).. "!", 5)
+            g.notify("Info", "You are already in: "..tostring(real_name).. "!", 5)
             return
         end
 
