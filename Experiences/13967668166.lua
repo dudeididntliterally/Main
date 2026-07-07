@@ -13161,7 +13161,7 @@ Callback = function(split)
 end}, "Loop_Fling_Input_UI")
 
 g.create_ui_element("Button", Players_Section, {
-Name = "Loop Fling Player (broken)",
+Name = "UnLoopfling Player",
 Callback = function()
     g.stop_loopfling()
 end})
