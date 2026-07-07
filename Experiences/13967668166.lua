@@ -12,7 +12,7 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V9.1.0"
+local Raw_Version = "V9.1.2"
 getgenv().Script_Version = tostring(Raw_Version).."-LifeHub"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
@@ -13149,7 +13149,7 @@ Callback = function()
 end})
 
 g.create_ui_element("Input", Players_Section, {
-Name = "Loop Fling Player (broken)",
+Name = "Loop Fling Player",
 PlaceholderText = "Username or displayname...",
 Flag = "Loop_Fling_Input_UI",
 Callback = function(split)
