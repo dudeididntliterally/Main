@@ -2786,10 +2786,10 @@ local github_urls = {
         "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Global_Environment.lua"
     },
     Life_Together_Network = {
-        "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Functions_API.lua"
+        "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Life_Together_Network.lua"
     },
     Functions_API_LifeTogether = {
-        "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Life_Together_Network.lua"
+        "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Functions_API.lua"
     },
     LifeTogether_Anti_Staff = { -- OP
         "https://raw.githubusercontent.com/EnterpriseExperience/Script_Framework/refs/heads/main/LifeTogether_Anti_Staff.lua"
