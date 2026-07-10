@@ -13338,7 +13338,7 @@ g.anti_sit_func = function(toggle)
         g.Not_Ever_Sitting = true
         g.toggle_anti_sit(true)
         g.notify("Success", "Anti-Sit is now enabled!", 5)
-        show_notification("Success:", "Anti-Sit is now enabled!", "Normal")
+        show_notification("Success:", "Anti-Sit is now enabled.", "Normal")
         lib.spawn(key, "spawn", function()
             while g.Not_Ever_Sitting == true do
                 g.Seat.enabled.set(false)
@@ -13356,8 +13356,8 @@ g.anti_sit_func = function(toggle)
         g.toggle_anti_sit(false)
         fw(0.2)
         g.Seat.enabled.set(true)
-        notify("Success", "Sitting is now enabled!", 5)
-        Phone.show_notification("Success:", "Sitting is now enabled!", "Normal")
+        notify("Success", "Anti-Sit is now disabled.", 5)
+        Phone.show_notification("Success:", "Anti-Sit is now disabled.", "Normal")
     else
         return
     end
