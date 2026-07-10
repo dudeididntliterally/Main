@@ -12,10 +12,11 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V9.1.3"
+local Raw_Version = "V9.2.2"
 getgenv().Script_Version = tostring(Raw_Version).."-LifeHub"
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local localPlayer = Players.LocalPlayer or Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+g.Keybind_Input_Disabled_For_Mini_Game = g.Keybind_Input_Disabled_For_Mini_Game or false
 g.colors = g.colors or {
     Color3.fromRGB(255,255,255),
     Color3.fromRGB(128,128,128),
@@ -188,6 +189,7 @@ local lib = g.FlamesLibrary
 getgenv().lib = getgenv().FlamesLibrary -- necessary for some reason.
 local lib_attempts = 0
 local lib_max_attempts = 15
+local TextService = g.TextService or cloneref and cloneref(game:GetService("TextService")) or game:GetService("TextService")
 while (not lib or type(lib) ~= "table") and lib_attempts < lib_max_attempts do
     task.wait(0.5)
     lib_attempts = lib_attempts + 1
@@ -257,6 +259,7 @@ function get_masked_flames_hub_unique_id()
     return mask_unique_id(raw)
 end
 
+local FlamesLibrary = g.lib or g.FlamesLibrary or getgenv().FlamesLibrary
 local Chat = cloneref and cloneref(game:GetService("Chat")) or game:GetService("Chat")
 local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
 local me = g.LocalPlayer or Players.LocalPlayer
@@ -272,13 +275,75 @@ g.will_tag = g.will_tag or function(text)
     return filtered ~= text
 end
 
+g.minigame_difficulty = {
+    memory = "Medium",
+    reaction = "Medium",
+    keypad = "Medium",
+    hacking = "Medium",
+    safe = "Medium",
+    wire = "Medium",
+    simon = "Medium",
+}
+
+g.minigame_difficulty_presets = {
+    memory = {
+        Easy   = {show_time = 14, max_mistakes = 5, pattern_min = 4, pattern_max = 6},
+        Medium = {show_time = 10, max_mistakes = 3, pattern_min = 6, pattern_max = 9},
+        Hard   = {show_time = 6,  max_mistakes = 2, pattern_min = 9, pattern_max = 12},
+    },
+    reaction = {
+        Easy   = {max_wins = 4, max_misses = 5, start_speed = 0.4, speed_step = 0.08, perfect_window = 0.03},
+        Medium = {max_wins = 5, max_misses = 3, start_speed = 0.6, speed_step = 0.15, perfect_window = 0.02},
+        Hard   = {max_wins = 7, max_misses = 2, start_speed = 0.9, speed_step = 0.22, perfect_window = 0.012},
+    },
+    keypad = {
+        Easy   = {code_length = 3, max_attempts = 7},
+        Medium = {code_length = 4, max_attempts = 5},
+        Hard   = {code_length = 5, max_attempts = 4},
+    },
+    hacking = {
+        Easy   = {sequence_length = 3, time_limit = 28, grid_cols = 6, grid_rows = 5},
+        Medium = {sequence_length = 4, time_limit = 20, grid_cols = 8, grid_rows = 6},
+        Hard   = {sequence_length = 6, time_limit = 14, grid_cols = 10, grid_rows = 7},
+    },
+    safe = {
+        Easy   = {sequence_count = 2, time_limit = 40, dial_speed = 60, target_window = 2},
+        Medium = {sequence_count = 3, time_limit = 30, dial_speed = 90, target_window = 1},
+        Hard   = {sequence_count = 4, time_limit = 22, dial_speed = 130, target_window = 0.5},
+    },
+    wire = {
+        Easy   = {wire_count = 4, time_limit = 32, clue_count = 3},
+        Medium = {wire_count = 5, time_limit = 25, clue_count = 2},
+        Hard   = {wire_count = 6, time_limit = 18, clue_count = 1},
+    },
+    simon = {
+        Easy   = {rounds_to_win = 3, flash_duration = 0.5, gap_duration = 0.25},
+        Medium = {rounds_to_win = 5, flash_duration = 0.4, gap_duration = 0.15},
+        Hard   = {rounds_to_win = 8, flash_duration = 0.25, gap_duration = 0.08},
+    },
+}
+
+g.minigame_reward_multiplier = {Easy = 0.7, Medium = 1, Hard = 1.5}
+local DIFFICULTY_ORDER = {"Easy", "Medium", "Hard"}
+local DIFFICULTY_COLOR = {
+    Easy = Color3.fromRGB(60, 180, 100),
+    Medium = Color3.fromRGB(220, 160, 30),
+    Hard = Color3.fromRGB(200, 70, 70),
+}
+
+local function get_preset(game_key)
+    local difficulty = g.minigame_difficulty[game_key] or "Medium"
+    local presets = g.minigame_difficulty_presets[game_key]
+    return presets[difficulty] or presets.Medium, difficulty
+end
+
 g.Memory_Mini_Game_GUI = function()
     local Players = g.Players or cloneref and cloneref(game:GetService("Players")) or game:GetService("Players")
-    local CoreGui = g.CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+    local preset = get_preset("memory")
     local GRID_SIZE = 5
     local TILE_COUNT = GRID_SIZE * GRID_SIZE
-    local SHOW_TIME = 10
-    local MAX_MISTAKES = 3
+    local SHOW_TIME = preset.show_time
+    local MAX_MISTAKES = preset.max_mistakes
     local GREEN = Color3.fromRGB(0, 255, 0)
     local BLUE = Color3.fromRGB(30, 70, 120)
     local DARK = Color3.fromRGB(20, 20, 20)
@@ -289,7 +354,7 @@ g.Memory_Mini_Game_GUI = function()
         if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
         return
     end
-
+    
     if CoreGui:FindFirstChild("MemoryMinigameGUI") then CoreGui.MemoryMinigameGUI:Destroy() end
     local gui = Instance.new("ScreenGui")
     gui.Name = "MemoryMinigameGUI"
@@ -297,6 +362,7 @@ g.Memory_Mini_Game_GUI = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
     frame.Position = UDim2.fromScale(0.5, 0.5)
@@ -348,7 +414,7 @@ g.Memory_Mini_Game_GUI = function()
     local found = {}
     local mistakes = 0
     local input_locked = true
-    local function cleanup() if gui then gui:Destroy() end end
+    local function cleanup() getgenv().Keybind_Input_Disabled_For_Mini_Game = false if gui then gui:Destroy() end end
     cancel.MouseButton1Click:Connect(function()
         if g.notify then g.notify("Info", "Mini-game cancelled.", 3) end
         cleanup()
@@ -365,7 +431,7 @@ g.Memory_Mini_Game_GUI = function()
     end
 
     local function generate_pattern()
-        local count = math.random(6, 9)
+        local count = math.random(preset.pattern_min, preset.pattern_max)
         local used = {}
         while #pattern < count do
             local pick = math.random(1, TILE_COUNT)
@@ -377,24 +443,15 @@ g.Memory_Mini_Game_GUI = function()
     end
 
     local function check_win()
-        for _, index in ipairs(pattern) do
-            if not found[index] then return end
-        end
+        for _, index in ipairs(pattern) do if not found[index] then return end end
         task.delay(0.02, function()
             g.memory_mini_game_cooldown = tick()
-            if g.notify then
-                g.notify("Success", "You completed the memory mini-game.", 5)
-            end
+            if g.notify then g.notify("Success", "You completed the memory mini-game.", 5) end
             cleanup()
         end)
     end
 
-    local function show_pattern()
-        for _, index in ipairs(pattern) do
-            tiles[index].BackgroundColor3 = GREEN
-        end
-    end
-
+    local function show_pattern() for _, index in ipairs(pattern) do tiles[index].BackgroundColor3 = GREEN end end
     local function hide_pattern()
         for i, btn in ipairs(tiles) do
             if not found[i] then
@@ -405,9 +462,7 @@ g.Memory_Mini_Game_GUI = function()
     end
 
     local function fail()
-        if g.notify then
-            g.notify("Error", "You failed the memory mini-game.", 5)
-        end
+        if g.notify then g.notify("Error", "You failed the memory mini-game.", 5) end
         cleanup()
     end
 
@@ -449,15 +504,16 @@ g.reaction_time_minigame = function()
         return
     end
 
-    local MAX_WINS = 5
-    local MAX_MISSES = 3
+    local preset = get_preset("reaction")
+    local MAX_WINS = preset.max_wins
+    local MAX_MISSES = preset.max_misses
     local PURPLE = Color3.fromRGB(170, 85, 255)
     local DARK = Color3.fromRGB(18, 18, 18)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local RED = Color3.fromRGB(200, 60, 60)
     tg.wins = 0
     tg.misses = 0
-    tg.speed = 0.6
+    tg.speed = preset.start_speed
 
     local gui = Instance.new("ScreenGui")
     gui.Name = "ReactionTimeMinigame"
@@ -466,6 +522,7 @@ g.reaction_time_minigame = function()
     gui.Parent = CoreGui
     tg.gui = gui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
     frame.Size = UDim2.fromScale(0.9, 0.32)
     frame.Position = UDim2.fromScale(0.5, 0.5)
@@ -532,6 +589,7 @@ g.reaction_time_minigame = function()
     local function cleanup()
         if tg.renderConn then tg.renderConn:Disconnect() end
         if tg.gui then tg.gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
     end
 
     local function win()
@@ -585,13 +643,13 @@ g.reaction_time_minigame = function()
 
         if overlap > 0 then
             local center_dist = math.abs((a_min + a_max) / 2 - (t_min + t_max) / 2)
-            if center_dist < 0.02 then
+            if center_dist < preset.perfect_window then
                 flash("PERFECT", Color3.fromRGB(180, 255, 255))
             else
                 flash("GOOD", PURPLE)
             end
             tg.wins = tg.wins + 1
-            tg.speed = tg.speed + 0.15
+            tg.speed = tg.speed + preset.speed_step
             new_target()
             if tg.wins >= MAX_WINS then
                 win()
@@ -613,15 +671,15 @@ g.keypad_minigame = function()
         return
     end
 
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+    local preset = get_preset("keypad")
     local DARK = Color3.fromRGB(18, 18, 18)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local GREEN = Color3.fromRGB(0, 220, 100)
     local RED = Color3.fromRGB(200, 60, 60)
     local YELLOW = Color3.fromRGB(255, 200, 0)
     local GREY = Color3.fromRGB(40, 40, 40)
-    local CODE_LENGTH = 4
-    local MAX_ATTEMPTS = 5
+    local CODE_LENGTH = preset.code_length
+    local MAX_ATTEMPTS = preset.max_attempts
     local secret_code = {}
     local current_input = {}
     local attempts = 0
@@ -634,6 +692,7 @@ g.keypad_minigame = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 300, 0, 420)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -673,7 +732,7 @@ g.keypad_minigame = function()
     local display_label = Instance.new("TextLabel")
     display_label.Size = UDim2.new(1, 0, 1, 0)
     display_label.BackgroundTransparency = 1
-    display_label.Text = "_ _ _ _"
+    display_label.Text = string.rep("_ ", CODE_LENGTH):sub(1, -2)
     display_label.TextColor3 = GREEN
     display_label.Font = Enum.Font.Code
     display_label.TextSize = 24
@@ -699,7 +758,7 @@ g.keypad_minigame = function()
     cancel.TextColor3 = WHITE
     cancel.Parent = frame
     Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
-    local function cleanup() if gui then gui:Destroy() end end
+    local function cleanup() getgenv().Keybind_Input_Disabled_For_Mini_Game = false if gui then gui:Destroy() end end
     local function update_display()
         local parts = {}
         for i = 1, CODE_LENGTH do
@@ -742,16 +801,12 @@ g.keypad_minigame = function()
 
     local function win()
         g.keypad_minigame_cooldown = tick()
-        if g.notify then
-            g.notify("Success", "Keypad cracked!.", 30)
-        end
+        if g.notify then g.notify("Success", "Keypad cracked!.", 30) end
         task.delay(0.5, cleanup)
     end
 
     local function fail()
-        if g.notify then
-            g.notify("Error", "Keypad locked out!.", 5)
-        end
+        if g.notify then g.notify("Error", "Keypad locked out!.", 5) end
         task.delay(0.5, cleanup)
     end
 
@@ -871,18 +926,17 @@ g.hacking_minigame = function()
         return
     end
 
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
-    local RunService = cloneref and cloneref(game:GetService("RunService")) or game:GetService("RunService")
+    local preset = get_preset("hacking")
     local DARK = Color3.fromRGB(10, 10, 10)
     local GREEN = Color3.fromRGB(0, 255, 100)
     local DIM_GREEN = Color3.fromRGB(0, 100, 40)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local RED = Color3.fromRGB(200, 60, 60)
     local YELLOW = Color3.fromRGB(255, 200, 0)
-    local GRID_COLS = 8
-    local GRID_ROWS = 6
-    local SEQUENCE_LENGTH = 4
-    local TIME_LIMIT = 20
+    local GRID_COLS = preset.grid_cols
+    local GRID_ROWS = preset.grid_rows
+    local SEQUENCE_LENGTH = preset.sequence_length
+    local TIME_LIMIT = preset.time_limit
     local chars = {"A","B","C","D","E","F","1","2","3","4","5","6","7","8","9","0"}
     local grid_data = {}
     local target_sequence = {}
@@ -895,9 +949,7 @@ g.hacking_minigame = function()
     local timer_conn = nil
     for row = 1, GRID_ROWS do
         grid_data[row] = {}
-        for col = 1, GRID_COLS do
-            grid_data[row][col] = chars[math.random(1, #chars)]
-        end
+        for col = 1, GRID_COLS do grid_data[row][col] = chars[math.random(1, #chars)] end
     end
 
     local start_col = math.random(1, GRID_COLS)
@@ -924,8 +976,9 @@ g.hacking_minigame = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 520, 0, 480)
+    frame.Size = UDim2.new(0, math.max(420, GRID_COLS * 62 + 20), 0, GRID_ROWS * 44 + 130)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
     frame.Position = UDim2.fromScale(0.5, 0.5)
     frame.BackgroundColor3 = DARK
@@ -1012,30 +1065,25 @@ g.hacking_minigame = function()
         if render_conn then render_conn:Disconnect() end
         if timer_conn then timer_conn:Disconnect() end
         if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
     end
 
     local function update_progress()
         local parts = {}
-        for _, v in ipairs(current_sequence) do
-            table.insert(parts, v)
-        end
+        for _, v in ipairs(current_sequence) do table.insert(parts, v) end
         progress_label.Text = "INPUT:  " .. table.concat(parts, "  ")
     end
 
     local function win()
         game_over = true
         g.hacking_minigame_cooldown = tick()
-        if g.notify then
-            g.notify("Success", "Breach successful!.", 5)
-        end
+        if g.notify then g.notify("Success", "Breach successful!.", 5) end
         task.delay(0.5, cleanup)
     end
 
     local function fail(msg)
         game_over = true
-        if g.notify then
-            g.notify("Error", msg or "Breach failed!", 5)
-        end
+        if g.notify then g.notify("Error", msg or "Breach failed!", 5) end
         task.delay(0.5, cleanup)
     end
 
@@ -1063,7 +1111,7 @@ g.hacking_minigame = function()
                         btn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
                         btn.TextColor3 = DIM_GREEN
                     end
-                    else
+                else
                     if selected_col and row == selected_col then
                         btn.BackgroundColor3 = Color3.fromRGB(0, 60, 30)
                         btn.TextColor3 = GREEN
@@ -1095,7 +1143,6 @@ g.hacking_minigame = function()
             btn.Parent = grid_frame
             Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
             cell_buttons[row][col] = btn
-
             btn.MouseButton1Click:Connect(function()
                 if game_over then return end
                 local valid = false
@@ -1132,7 +1179,6 @@ g.hacking_minigame = function()
     selected_col = start_col
     highlight_cells()
     update_progress()
-
     local elapsed = 0
     timer_conn = RunService.Heartbeat:Connect(function(dt)
         if game_over then return end
@@ -1146,9 +1192,7 @@ g.hacking_minigame = function()
         local mins = math.floor(time_left / 60)
         local secs = math.floor(time_left % 60)
         timer_label.Text = string.format("%02d:%02d", mins, secs)
-        if time_left <= 5 then
-            timer_label.TextColor3 = RED
-        end
+        if time_left <= 5 then timer_label.TextColor3 = RED end
     end)
 end
 
@@ -1159,23 +1203,22 @@ g.safe_cracker_minigame = function()
         return
     end
 
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
-    local RunService = cloneref and cloneref(game:GetService("RunService")) or game:GetService("RunService")
+    local preset = get_preset("safe")
     local DARK = Color3.fromRGB(12, 10, 8)
     local GOLD = Color3.fromRGB(200, 160, 40)
     local DIM_GOLD = Color3.fromRGB(80, 60, 10)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local RED = Color3.fromRGB(200, 60, 60)
     local GREEN = Color3.fromRGB(60, 200, 100)
-    local SEQUENCE_COUNT = 3
+    local SEQUENCE_COUNT = preset.sequence_count
     local NOTCH_COUNT = 20
-    local TIME_LIMIT = 30
-    local TARGET_WINDOW = 1.2
+    local TIME_LIMIT = preset.time_limit
+    local TARGET_WINDOW = preset.target_window
     local targets = {}
     for i = 1, SEQUENCE_COUNT do table.insert(targets, math.random(1, NOTCH_COUNT)) end
     local current_step = 1
     local dial_angle = 0
-    local dial_speed = 90
+    local dial_speed = preset.dial_speed
     local spin_dir = 1
     local game_over = false
     local elapsed = 0
@@ -1188,6 +1231,7 @@ g.safe_cracker_minigame = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 380, 0, 440)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1330,6 +1374,7 @@ g.safe_cracker_minigame = function()
         if render_conn then render_conn:Disconnect() end
         if timer_conn then timer_conn:Disconnect() end
         if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
     end
 
     local function get_current_notch()
@@ -1371,8 +1416,7 @@ g.safe_cracker_minigame = function()
         local cur = get_current_notch()
         local tgt = targets[current_step]
         local diff = math.abs(cur - tgt)
-        local within = diff <= 1 or diff >= NOTCH_COUNT - 1
-
+        local within = diff <= TARGET_WINDOW or diff >= NOTCH_COUNT - TARGET_WINDOW
         if within then
             feedback.Text = "Notch: " .. tgt .. " hit!"
             feedback.TextColor3 = GREEN
@@ -1427,7 +1471,7 @@ g.wire_cutter_minigame = function()
         return
     end
 
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+    local preset = get_preset("wire")
     local DARK = Color3.fromRGB(12, 12, 14)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local MUTED = Color3.fromRGB(120, 120, 130)
@@ -1437,7 +1481,7 @@ g.wire_cutter_minigame = function()
     local BLUE = Color3.fromRGB(80, 140, 240)
     local ORANGE = Color3.fromRGB(230, 130, 40)
     local WHITE_W = Color3.fromRGB(200, 200, 200)
-    local TIME_LIMIT = 25
+    local TIME_LIMIT = preset.time_limit
     local WIRE_COLORS = {
         {name = "Red",    color = RED},
         {name = "Green",  color = GREEN},
@@ -1446,7 +1490,7 @@ g.wire_cutter_minigame = function()
         {name = "Orange", color = ORANGE},
         {name = "White",  color = WHITE_W},
     }
-    local WIRE_COUNT = 5
+    local WIRE_COUNT = preset.wire_count
     local wires = {}
     local used = {}
     while #wires < WIRE_COUNT do
@@ -1459,9 +1503,8 @@ g.wire_cutter_minigame = function()
 
     local clues = {}
     local safe_wire = math.random(1, WIRE_COUNT)
-    local positions = {"first", "second", "third", "fourth", "fifth"}
+    local positions = {"first", "second", "third", "fourth", "fifth", "sixth"}
     local clue_types = {}
-
     for i = 1, WIRE_COUNT do
         if i ~= safe_wire then
             local t = math.random(1, 3)
@@ -1482,10 +1525,7 @@ g.wire_cutter_minigame = function()
         local j = math.random(1, i)
         indices[i], indices[j] = indices[j], indices[i]
     end
-    for i = 1, math.min(3, #clue_types) do
-        table.insert(shown_clues, clue_types[indices[i]])
-    end
-
+    for i = 1, math.min(preset.clue_count, #clue_types) do table.insert(shown_clues, clue_types[indices[i]]) end
     local game_over = false
     local timer_conn = nil
     if CoreGui:FindFirstChild("WireCutterGUI") then CoreGui.WireCutterGUI:Destroy() end
@@ -1495,8 +1535,10 @@ g.wire_cutter_minigame = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local wire_start_offset = 44 + (#shown_clues + 2) * 20
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 400, 0, 480)
+    frame.Size = UDim2.new(0, 400, 0, wire_start_offset + WIRE_COUNT * 56 + 20)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
     frame.Position = UDim2.fromScale(0.5, 0.5)
     frame.BackgroundColor3 = DARK
@@ -1565,10 +1607,11 @@ g.wire_cutter_minigame = function()
         clue_lbl.Parent = frame
     end
 
-    local wire_start_y = 44 + (#shown_clues + 2) * 20
+    local wire_start_y = wire_start_offset
     local function cleanup()
         if timer_conn then timer_conn:Disconnect() end
         if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
     end
 
     local function win()
@@ -1649,7 +1692,7 @@ g.wire_cutter_minigame = function()
                 gap.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
                 gap.BorderSizePixel = 0
                 gap.Parent = wire_row
-                cut_btn.Text = getgenv().Flames_Hub_Emojis and tostring(getgenv().Flames_Hub_Emojis["Checkmark"])
+                cut_btn.Text = "✅"
                 cut_btn.TextColor3 = GREEN
                 win()
             else
@@ -1666,7 +1709,7 @@ g.wire_cutter_minigame = function()
     end)
 
     local time_elapsed = 0
-    timer_conn = g.RunService.Heartbeat:Connect(function(dt)
+    timer_conn = RunService.Heartbeat:Connect(function(dt)
         if game_over then return end
         time_elapsed = time_elapsed + dt
         local left = TIME_LIMIT - time_elapsed
@@ -1688,14 +1731,13 @@ g.simon_says_minigame = function()
         if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
         return
     end
-
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+    local preset = get_preset("simon")
     local TweenService = cloneref and cloneref(game:GetService("TweenService")) or game:GetService("TweenService")
     local DARK = Color3.fromRGB(14, 14, 18)
     local WHITE = Color3.fromRGB(240, 240, 240)
     local MUTED = Color3.fromRGB(100, 100, 110)
     local RED = Color3.fromRGB(220, 60, 60)
-    local ROUNDS_TO_WIN = 5
+    local ROUNDS_TO_WIN = preset.rounds_to_win
     local BUTTONS = {
         {name = "Red",    color = Color3.fromRGB(200, 50, 50),   dim = Color3.fromRGB(60, 15, 15)},
         {name = "Green",  color = Color3.fromRGB(50, 200, 90),   dim = Color3.fromRGB(15, 60, 25)},
@@ -1714,6 +1756,7 @@ g.simon_says_minigame = function()
     gui.ResetOnSpawn = false
     gui.Parent = CoreGui
 
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 340, 0, 400)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1783,10 +1826,7 @@ g.simon_says_minigame = function()
         UDim2.new(0, 0, 0, 136),
         UDim2.new(0, 136, 0, 136),
     }
-    local function cleanup()
-        if gui then gui:Destroy() end
-    end
-
+    local function cleanup() getgenv().Keybind_Input_Disabled_For_Mini_Game = false if gui then gui:Destroy() end end
     local function win()
         game_over = true
         g.simon_says_cooldown = tick()
@@ -1806,7 +1846,7 @@ g.simon_says_minigame = function()
         b.BackgroundColor3 = BUTTONS[index].color
         task.delay(duration, function()
             b.BackgroundColor3 = BUTTONS[index].dim
-            if callback then task.delay(0.1, callback) end
+            if callback then task.delay(preset.gap_duration, callback) end
         end)
     end
 
@@ -1815,8 +1855,8 @@ g.simon_says_minigame = function()
             if callback then callback() end
             return
         end
-        flash_button(sequence[step], 0.4, function()
-            task.delay(0.15, function()
+        flash_button(sequence[step], preset.flash_duration, function()
+            task.delay(preset.gap_duration, function()
                 play_sequence(step + 1, callback)
             end)
         end)
@@ -1887,9 +1927,1790 @@ g.simon_says_minigame = function()
     start_round()
 end
 
+g.open_difficulty_editor = function()
+    if CoreGui:FindFirstChild("DifficultyEditorGUI") then
+        CoreGui.DifficultyEditorGUI.Frame.Visible = true
+        return
+    end
+
+    local DARK = Color3.fromRGB(18, 18, 18)
+    local SURFACE = Color3.fromRGB(26, 26, 26)
+    local BORDER = Color3.fromRGB(50, 50, 50)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local MUTED = Color3.fromRGB(140, 140, 140)
+    local GAME_LABELS = {
+        {key = "memory", name = "Memory Grid"},
+        {key = "reaction", name = "Reaction Time"},
+        {key = "keypad", name = "Keypad Hack"},
+        {key = "hacking", name = "Breach Protocol"},
+        {key = "safe", name = "Safe Cracker"},
+        {key = "wire", name = "Wire Cutter"},
+        {key = "simon", name = "Simon Says"},
+        {key = "lockpick", name = "Lockpick"},
+        {key = "laser", name = "Laser Grid"},
+        {key = "signal", name = "Signal Triangulation"},
+        {key = "pipe", name = "Pipe Reroute"},
+        {key = "steady", name = "Steady Hand"},
+        {key = "rhythm", name = "Rhythm Splice"},
+        {key = "recall", name = "Vault Recall"},
+    }
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "DifficultyEditorGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    local outer = Instance.new("Frame")
+    outer.Name = "Frame"
+    outer.AnchorPoint = Vector2.new(0.5, 0.5)
+    outer.Position = UDim2.fromScale(0.5, 0.5)
+    outer.Size = UDim2.new(0, 340, 0, 470)
+    outer.BackgroundColor3 = DARK
+    outer.BorderSizePixel = 0
+    outer.Parent = gui
+    Instance.new("UICorner", outer).CornerRadius = UDim.new(0, 14)
+    Instance.new("UIStroke", outer).Color = BORDER
+
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 42)
+    header.BackgroundColor3 = SURFACE
+    header.BorderSizePixel = 0
+    header.Parent = outer
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
+
+    local hfix = Instance.new("Frame")
+    hfix.Size = UDim2.new(1, 0, 0.5, 0)
+    hfix.Position = UDim2.fromScale(0, 0.5)
+    hfix.BackgroundColor3 = SURFACE
+    hfix.BorderSizePixel = 0
+    hfix.Parent = header
+
+    local title_lbl = Instance.new("TextLabel")
+    title_lbl.Size = UDim2.new(1, -50, 1, 0)
+    title_lbl.Position = UDim2.new(0, 14, 0, 0)
+    title_lbl.BackgroundTransparency = 1
+    title_lbl.Text = "Difficulty Editor"
+    title_lbl.Font = Enum.Font.GothamBold
+    title_lbl.TextSize = 14
+    title_lbl.TextColor3 = WHITE
+    title_lbl.TextXAlignment = Enum.TextXAlignment.Left
+    title_lbl.Parent = header
+
+    local close_btn = Instance.new("TextButton")
+    close_btn.Size = UDim2.new(0, 34, 0, 24)
+    close_btn.Position = UDim2.new(1, -42, 0.5, -12)
+    close_btn.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    close_btn.Text = "X"
+    close_btn.TextColor3 = MUTED
+    close_btn.Font = Enum.Font.GothamBold
+    close_btn.TextSize = 13
+    close_btn.BorderSizePixel = 0
+    close_btn.Parent = header
+    Instance.new("UICorner", close_btn).CornerRadius = UDim.new(0, 6)
+    close_btn.MouseButton1Click:Connect(function() outer.Visible = false end)
+
+    if dragify then dragify(outer) end
+    local list_frame = Instance.new("ScrollingFrame")
+    list_frame.Size = UDim2.new(1, 0, 1, -92)
+    list_frame.Position = UDim2.new(0, 0, 0, 42)
+    list_frame.BackgroundTransparency = 1
+    list_frame.BorderSizePixel = 0
+    list_frame.ScrollBarThickness = 3
+    list_frame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    list_frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    list_frame.Parent = outer
+
+    local ui_list = Instance.new("UIListLayout")
+    ui_list.Padding = UDim.new(0, 8)
+    ui_list.SortOrder = Enum.SortOrder.LayoutOrder
+    ui_list.Parent = list_frame
+
+    local list_pad = Instance.new("UIPadding")
+    list_pad.PaddingTop = UDim.new(0, 10)
+    list_pad.PaddingBottom = UDim.new(0, 10)
+    list_pad.PaddingLeft = UDim.new(0, 10)
+    list_pad.PaddingRight = UDim.new(0, 10)
+    list_pad.Parent = list_frame
+
+    local refresh_row
+    local function randomize_one(game_key)
+        g.minigame_difficulty[game_key] = DIFFICULTY_ORDER[math.random(1, #DIFFICULTY_ORDER)]
+        refresh_row(game_key)
+    end
+
+    local row_buttons = {}
+    local function build_row(entry, order)
+        local card = Instance.new("Frame")
+        card.Size = UDim2.new(1, 0, 0, 62)
+        card.BackgroundColor3 = SURFACE
+        card.BorderSizePixel = 0
+        card.LayoutOrder = order
+        card.Parent = list_frame
+        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+        Instance.new("UIStroke", card).Color = BORDER
+
+        local name_lbl = Instance.new("TextLabel")
+        name_lbl.Size = UDim2.new(1, -20, 0, 18)
+        name_lbl.Position = UDim2.new(0, 10, 0, 6)
+        name_lbl.BackgroundTransparency = 1
+        name_lbl.Text = entry.name
+        name_lbl.Font = Enum.Font.GothamBold
+        name_lbl.TextSize = 12
+        name_lbl.TextColor3 = WHITE
+        name_lbl.TextXAlignment = Enum.TextXAlignment.Left
+        name_lbl.Parent = card
+
+        local btn_row = Instance.new("Frame")
+        btn_row.Size = UDim2.new(1, -20, 0, 28)
+        btn_row.Position = UDim2.new(0, 10, 0, 26)
+        btn_row.BackgroundTransparency = 1
+        btn_row.Parent = card
+
+        local btn_layout = Instance.new("UIListLayout")
+        btn_layout.FillDirection = Enum.FillDirection.Horizontal
+        btn_layout.Padding = UDim.new(0, 6)
+        btn_layout.SortOrder = Enum.SortOrder.LayoutOrder
+        btn_layout.Parent = btn_row
+
+        row_buttons[entry.key] = {}
+
+        for _, diff_name in ipairs(DIFFICULTY_ORDER) do
+            local diff_btn = Instance.new("TextButton")
+            diff_btn.Size = UDim2.new(0, 68, 1, 0)
+            diff_btn.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+            diff_btn.Text = diff_name
+            diff_btn.Font = Enum.Font.GothamBold
+            diff_btn.TextSize = 11
+            diff_btn.TextColor3 = MUTED
+            diff_btn.BorderSizePixel = 0
+            diff_btn.Parent = btn_row
+            Instance.new("UICorner", diff_btn).CornerRadius = UDim.new(0, 6)
+            row_buttons[entry.key][diff_name] = diff_btn
+
+            diff_btn.MouseButton1Click:Connect(function()
+                g.minigame_difficulty[entry.key] = diff_name
+                refresh_row(entry.key)
+            end)
+        end
+
+        local dice_btn = Instance.new("TextButton")
+        dice_btn.Size = UDim2.new(0, 28, 1, 0)
+        dice_btn.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+        dice_btn.Text = "🎲"
+        dice_btn.TextSize = 13
+        dice_btn.BorderSizePixel = 0
+        dice_btn.Parent = btn_row
+        Instance.new("UICorner", dice_btn).CornerRadius = UDim.new(0, 6)
+        dice_btn.MouseButton1Click:Connect(function() randomize_one(entry.key) end)
+    end
+
+    refresh_row = function(game_key)
+        local current = g.minigame_difficulty[game_key] or "Medium"
+        for diff_name, btn in pairs(row_buttons[game_key]) do
+            if diff_name == current then
+                btn.BackgroundColor3 = DIFFICULTY_COLOR[diff_name]
+                btn.TextColor3 = Color3.fromRGB(20, 20, 20)
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+                btn.TextColor3 = MUTED
+            end
+        end
+    end
+
+    for i, entry in ipairs(GAME_LABELS) do build_row(entry, i) end
+    for _, entry in ipairs(GAME_LABELS) do refresh_row(entry.key) end
+    local footer = Instance.new("Frame")
+    footer.Size = UDim2.new(1, 0, 0, 50)
+    footer.Position = UDim2.new(0, 0, 1, -50)
+    footer.BackgroundColor3 = SURFACE
+    footer.BorderSizePixel = 0
+    footer.Parent = outer
+
+    local randomize_all_btn = Instance.new("TextButton")
+    randomize_all_btn.Size = UDim2.new(1, -20, 0, 32)
+    randomize_all_btn.Position = UDim2.new(0, 10, 0, 9)
+    randomize_all_btn.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
+    randomize_all_btn.Text = "🎲 Randomize All"
+    randomize_all_btn.Font = Enum.Font.GothamBold
+    randomize_all_btn.TextSize = 13
+    randomize_all_btn.TextColor3 = WHITE
+    randomize_all_btn.BorderSizePixel = 0
+    randomize_all_btn.Parent = footer
+    Instance.new("UICorner", randomize_all_btn).CornerRadius = UDim.new(0, 8)
+    randomize_all_btn.MouseButton1Click:Connect(function() for _, entry in ipairs(GAME_LABELS) do randomize_one(entry.key) end end)
+end
+
+g.minigame_difficulty.lockpick = "Medium"
+g.minigame_difficulty.laser = "Medium"
+g.minigame_difficulty.signal = "Medium"
+g.minigame_difficulty.pipe = "Medium"
+g.minigame_difficulty.steady = "Medium"
+g.minigame_difficulty.rhythm = "Medium"
+g.minigame_difficulty.recall = "Medium"
+g.minigame_difficulty_presets.lockpick = {
+    Easy   = {pin_count = 3, sweet_width = 26, tension_max = 140, tension_rate = 6, dial_speed = 70},
+    Medium = {pin_count = 4, sweet_width = 18, tension_max = 120, tension_rate = 9, dial_speed = 100},
+    Hard   = {pin_count = 5, sweet_width = 12, tension_max = 100, tension_rate = 13, dial_speed = 140},
+}
+
+g.minigame_difficulty_presets.laser = {
+    Easy   = {row_count = 4, beam_speed = 1.0, hazard_margin = 0.10, time_limit = 35},
+    Medium = {row_count = 6, beam_speed = 1.5, hazard_margin = 0.16, time_limit = 25},
+    Hard   = {row_count = 8, beam_speed = 2.2, hazard_margin = 0.24, time_limit = 18},
+}
+
+g.minigame_difficulty_presets.signal = {
+    Easy   = {tolerance = 8, time_limit = 35, drift_speed = 0},
+    Medium = {tolerance = 5, time_limit = 25, drift_speed = 6},
+    Hard   = {tolerance = 3, time_limit = 18, drift_speed = 12},
+}
+
+g.minigame_difficulty_presets.pipe = {
+    Easy   = {grid_size = 3, locked_count = 1, time_limit = 40},
+    Medium = {grid_size = 4, locked_count = 2, time_limit = 30},
+    Hard   = {grid_size = 5, locked_count = 3, time_limit = 22},
+}
+
+g.minigame_difficulty_presets.steady = {
+    Easy   = {drift_force = 40, zone_width = 0.30, hold_duration = 3, time_limit = 30},
+    Medium = {drift_force = 70, zone_width = 0.20, hold_duration = 4, time_limit = 25},
+    Hard   = {drift_force = 110, zone_width = 0.12, hold_duration = 5, time_limit = 20},
+}
+
+g.minigame_difficulty_presets.rhythm = {
+    Easy   = {note_count = 10, note_speed = 220, hit_window = 0.14, max_misses = 4},
+    Medium = {note_count = 14, note_speed = 300, hit_window = 0.10, max_misses = 3},
+    Hard   = {note_count = 18, note_speed = 400, hit_window = 0.07, max_misses = 2},
+}
+
+g.minigame_difficulty_presets.recall = {
+    Easy   = {card_count = 4, show_time = 0.8, grid_cols = 4},
+    Medium = {card_count = 6, show_time = 0.6, grid_cols = 4},
+    Hard   = {card_count = 8, show_time = 0.45, grid_cols = 4},
+}
+
+g.lockpick_minigame = function()
+    if g.lockpick_minigame_cooldown and tick() - g.lockpick_minigame_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.lockpick_minigame_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("lockpick")
+    local DARK = Color3.fromRGB(16, 14, 12)
+    local BRONZE = Color3.fromRGB(190, 140, 70)
+    local DIM_BRONZE = Color3.fromRGB(70, 55, 30)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local RED = Color3.fromRGB(200, 60, 60)
+    local GREEN = Color3.fromRGB(60, 200, 100)
+    local PIN_COUNT = preset.pin_count
+    local SWEET_WIDTH = preset.sweet_width
+    local TENSION_MAX = preset.tension_max
+    local TENSION_RATE = preset.tension_rate
+    local DIAL_SPEED = preset.dial_speed
+    local pin = 1
+    local angle = 0
+    local dir = 1
+    local sweet_start = math.random(0, 359)
+    local tension = 0
+    local holding_tension = false
+    local game_over = false
+    local render_conn = nil
+    local heartbeat_conn = nil
+    if CoreGui:FindFirstChild("LockpickGUI") then CoreGui.LockpickGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "LockpickGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 340, 0, 440)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = BRONZE
+    fstroke.Thickness = 1.5
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.75, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// LOCKPICK //"
+    title.TextColor3 = BRONZE
+    title.Font = Enum.Font.Code
+    title.TextSize = 15
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local pin_label = Instance.new("TextLabel")
+    pin_label.Size = UDim2.new(1, -20, 0, 22)
+    pin_label.Position = UDim2.new(0, 10, 0, 44)
+    pin_label.BackgroundTransparency = 1
+    pin_label.Text = "Pin 1 of " .. PIN_COUNT
+    pin_label.TextColor3 = BRONZE
+    pin_label.Font = Enum.Font.Code
+    pin_label.TextSize = 13
+    pin_label.TextXAlignment = Enum.TextXAlignment.Left
+    pin_label.Parent = frame
+
+    local dial_holder = Instance.new("Frame")
+    dial_holder.Size = UDim2.new(0, 240, 0, 240)
+    dial_holder.AnchorPoint = Vector2.new(0.5, 0)
+    dial_holder.Position = UDim2.new(0.5, 0, 0, 76)
+    dial_holder.BackgroundTransparency = 1
+    dial_holder.Parent = frame
+
+    local dial_bg = Instance.new("Frame")
+    dial_bg.Size = UDim2.fromScale(1, 1)
+    dial_bg.BackgroundColor3 = Color3.fromRGB(24, 20, 16)
+    dial_bg.BorderSizePixel = 0
+    dial_bg.Parent = dial_holder
+    Instance.new("UICorner", dial_bg).CornerRadius = UDim.new(0.5, 0)
+    local dstroke = Instance.new("UIStroke", dial_bg)
+    dstroke.Color = DIM_BRONZE
+    dstroke.Thickness = 2
+
+    local sweet_arc = Instance.new("Frame")
+    sweet_arc.Size = UDim2.new(0, 10, 0, 40)
+    sweet_arc.AnchorPoint = Vector2.new(0.5, 1)
+    sweet_arc.BackgroundColor3 = GREEN
+    sweet_arc.BorderSizePixel = 0
+    sweet_arc.Parent = dial_holder
+    Instance.new("UICorner", sweet_arc).CornerRadius = UDim.new(0, 4)
+
+    local pick_marker = Instance.new("Frame")
+    pick_marker.Size = UDim2.new(0, 6, 0, 90)
+    pick_marker.AnchorPoint = Vector2.new(0.5, 1)
+    pick_marker.BackgroundColor3 = WHITE
+    pick_marker.BorderSizePixel = 0
+    pick_marker.Parent = dial_holder
+    Instance.new("UICorner", pick_marker).CornerRadius = UDim.new(0, 3)
+
+    local function position_at_angle(part, degrees, radius)
+        local rad = math.rad(degrees - 90)
+        local px = 0.5 + math.cos(rad) * radius
+        local py = 0.5 + math.sin(rad) * radius
+        part.Position = UDim2.new(px, 0, py, 0)
+        part.Rotation = degrees
+    end
+
+    position_at_angle(sweet_arc, sweet_start + SWEET_WIDTH / 2, 0.42)
+
+    local tension_bg = Instance.new("Frame")
+    tension_bg.Size = UDim2.new(1, -20, 0, 18)
+    tension_bg.Position = UDim2.new(0, 10, 0, 328)
+    tension_bg.BackgroundColor3 = Color3.fromRGB(30, 26, 20)
+    tension_bg.BorderSizePixel = 0
+    tension_bg.Parent = frame
+    Instance.new("UICorner", tension_bg).CornerRadius = UDim.new(0, 8)
+
+    local tension_fill = Instance.new("Frame")
+    tension_fill.Size = UDim2.new(0, 0, 1, 0)
+    tension_fill.BackgroundColor3 = GREEN
+    tension_fill.BorderSizePixel = 0
+    tension_fill.Parent = tension_bg
+    Instance.new("UICorner", tension_fill).CornerRadius = UDim.new(0, 8)
+
+    local tension_label = Instance.new("TextLabel")
+    tension_label.Size = UDim2.new(1, -20, 0, 16)
+    tension_label.Position = UDim2.new(0, 10, 0, 350)
+    tension_label.BackgroundTransparency = 1
+    tension_label.Text = "TENSION"
+    tension_label.TextColor3 = DIM_BRONZE
+    tension_label.Font = Enum.Font.Code
+    tension_label.TextSize = 11
+    tension_label.TextXAlignment = Enum.TextXAlignment.Center
+    tension_label.Parent = frame
+
+    local tension_btn = Instance.new("TextButton")
+    tension_btn.Size = UDim2.new(0, 160, 0, 40)
+    tension_btn.AnchorPoint = Vector2.new(0.5, 0)
+    tension_btn.Position = UDim2.new(0.5, 0, 0, 376)
+    tension_btn.BackgroundColor3 = Color3.fromRGB(38, 32, 20)
+    tension_btn.Text = "HOLD + SET PIN"
+    tension_btn.Font = Enum.Font.GothamBold
+    tension_btn.TextSize = 13
+    tension_btn.TextColor3 = BRONZE
+    tension_btn.BorderSizePixel = 0
+    tension_btn.Parent = frame
+    Instance.new("UICorner", tension_btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", tension_btn).Color = BRONZE
+
+    local function cleanup()
+        if render_conn then render_conn:Disconnect() end
+        if heartbeat_conn then heartbeat_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.lockpick_minigame_cooldown = tick()
+        if g.notify then g.notify("Success", "Lock picked!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Pick broke!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function next_pin()
+        pin = pin + 1
+        if pin > PIN_COUNT then
+            win()
+            return
+        end
+        pin_label.Text = "Pin " .. pin .. " of " .. PIN_COUNT
+        sweet_start = math.random(0, 359)
+        position_at_angle(sweet_arc, sweet_start + SWEET_WIDTH / 2, 0.42)
+        tension = math.max(0, tension - TENSION_MAX * 0.25)
+    end
+
+    tension_btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            holding_tension = true
+        end
+    end)
+
+    tension_btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            holding_tension = false
+        end
+    end)
+
+    tension_btn.MouseButton1Click:Connect(function()
+        if game_over then return end
+        local diff = math.abs(angle - (sweet_start + SWEET_WIDTH / 2))
+        diff = math.min(diff, 360 - diff)
+        if diff <= SWEET_WIDTH / 2 then
+            next_pin()
+        else
+            tension = math.min(TENSION_MAX, tension + TENSION_RATE * 4)
+        end
+    end)
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Lockpick cancelled.", 3) end
+        cleanup()
+    end)
+
+    render_conn = RunService.RenderStepped:Connect(function(dt)
+        if game_over then return end
+        angle = angle + DIAL_SPEED * dt * dir
+        if angle >= 360 then angle = angle - 360 end
+        if angle < 0 then angle = angle + 360 end
+        position_at_angle(pick_marker, angle, 0.45)
+    end)
+
+    heartbeat_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        if holding_tension then
+            tension = tension + TENSION_RATE * dt
+        else
+            tension = math.max(0, tension - TENSION_RATE * 1.5 * dt)
+        end
+        tension_fill.Size = UDim2.new(math.clamp(tension / TENSION_MAX, 0, 1), 0, 1, 0)
+        tension_fill.BackgroundColor3 = tension > TENSION_MAX * 0.75 and RED or GREEN
+        if tension >= TENSION_MAX then
+            fail("Pick snapped!")
+        end
+    end)
+end
+
+g.laser_grid_minigame = function()
+    if g.laser_grid_cooldown and tick() - g.laser_grid_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.laser_grid_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("laser")
+    local DARK = Color3.fromRGB(10, 10, 14)
+    local RED = Color3.fromRGB(220, 50, 50)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local GREEN = Color3.fromRGB(60, 200, 100)
+    local MUTED = Color3.fromRGB(90, 90, 100)
+    local ROW_COUNT = preset.row_count
+    local BEAM_SPEED = preset.beam_speed
+    local HAZARD_MARGIN = preset.hazard_margin
+    local TIME_LIMIT = preset.time_limit
+    local BEAM_WIDTH = 0.08
+    local current_row = 1
+    local game_over = false
+    local timer_conn = nil
+    local render_conn = nil
+    local beam_phase = {}
+    for i = 1, ROW_COUNT do beam_phase[i] = math.random() * math.pi * 2 end
+
+    if CoreGui:FindFirstChild("LaserGridGUI") then CoreGui.LaserGridGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "LaserGridGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 340, 0, ROW_COUNT * 46 + 130)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = RED
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.7, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// LASER GRID //"
+    title.TextColor3 = RED
+    title.Font = Enum.Font.Code
+    title.TextSize = 15
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local timer_label = Instance.new("TextLabel")
+    timer_label.Size = UDim2.new(0.2, 0, 0, 36)
+    timer_label.Position = UDim2.new(0.72, 0, 0, 6)
+    timer_label.BackgroundTransparency = 1
+    timer_label.Text = "00:" .. string.format("%02d", TIME_LIMIT)
+    timer_label.TextColor3 = WHITE
+    timer_label.Font = Enum.Font.Code
+    timer_label.TextSize = 15
+    timer_label.TextXAlignment = Enum.TextXAlignment.Right
+    timer_label.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local status_label = Instance.new("TextLabel")
+    status_label.Size = UDim2.new(1, -20, 0, 20)
+    status_label.Position = UDim2.new(0, 10, 0, 44)
+    status_label.BackgroundTransparency = 1
+    status_label.Text = "Row 1 of " .. ROW_COUNT .. " — advance between beams"
+    status_label.TextColor3 = MUTED
+    status_label.Font = Enum.Font.Code
+    status_label.TextSize = 11
+    status_label.TextXAlignment = Enum.TextXAlignment.Left
+    status_label.Parent = frame
+
+    local rows_holder = Instance.new("Frame")
+    rows_holder.Size = UDim2.new(1, -20, 0, ROW_COUNT * 46)
+    rows_holder.Position = UDim2.new(0, 10, 0, 70)
+    rows_holder.BackgroundTransparency = 1
+    rows_holder.Parent = frame
+
+    local lanes = {}
+    local token_col = 0.1
+    for i = 1, ROW_COUNT do
+        local lane = Instance.new("Frame")
+        lane.Size = UDim2.new(1, 0, 0, 38)
+        lane.Position = UDim2.new(0, 0, 0, (ROW_COUNT - i) * 46)
+        lane.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+        lane.BorderSizePixel = 0
+        lane.Parent = rows_holder
+        Instance.new("UICorner", lane).CornerRadius = UDim.new(0, 6)
+
+        local beam = Instance.new("Frame")
+        beam.Size = UDim2.new(BEAM_WIDTH, 0, 1, 0)
+        beam.BackgroundColor3 = RED
+        beam.BorderSizePixel = 0
+        beam.Parent = lane
+        Instance.new("UICorner", beam).CornerRadius = UDim.new(0, 6)
+
+        lanes[i] = {lane = lane, beam = beam}
+    end
+
+    local token = Instance.new("Frame")
+    token.Size = UDim2.new(0, 20, 0, 20)
+    token.AnchorPoint = Vector2.new(0.5, 0.5)
+    token.BackgroundColor3 = GREEN
+    token.BorderSizePixel = 0
+    token.Parent = lanes[1].lane
+    token.Position = UDim2.new(token_col, 0, 0.5, 0)
+    Instance.new("UICorner", token).CornerRadius = UDim.new(0.5, 0)
+
+    local advance_btn = Instance.new("TextButton")
+    advance_btn.Size = UDim2.new(0, 140, 0, 36)
+    advance_btn.AnchorPoint = Vector2.new(0.5, 0)
+    advance_btn.Position = UDim2.new(0.5, 0, 1, -46)
+    advance_btn.BackgroundColor3 = Color3.fromRGB(38, 30, 30)
+    advance_btn.Text = "ADVANCE"
+    advance_btn.Font = Enum.Font.GothamBold
+    advance_btn.TextSize = 13
+    advance_btn.TextColor3 = RED
+    advance_btn.BorderSizePixel = 0
+    advance_btn.Parent = frame
+    Instance.new("UICorner", advance_btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", advance_btn).Color = RED
+
+    local function cleanup()
+        if timer_conn then timer_conn:Disconnect() end
+        if render_conn then render_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.laser_grid_cooldown = tick()
+        if g.notify then g.notify("Success", "Bypassed the laser grid!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Tripped a laser!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    advance_btn.MouseButton1Click:Connect(function()
+        if game_over then return end
+        local row_data = lanes[current_row]
+        local beam_min = row_data.beam.Position.X.Scale - HAZARD_MARGIN / 2
+        local beam_max = beam_min + BEAM_WIDTH + HAZARD_MARGIN
+        if token_col >= beam_min and token_col <= beam_max then
+            fail("Tripped a laser!")
+            return
+        end
+        current_row = current_row + 1
+        if current_row > ROW_COUNT then
+            win()
+            return
+        end
+        token.Parent = lanes[current_row].lane
+        status_label.Text = "Row " .. current_row .. " of " .. ROW_COUNT .. " — advance between beams"
+    end)
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Laser grid cancelled.", 3) end
+        cleanup()
+    end)
+
+    render_conn = RunService.RenderStepped:Connect(function(dt)
+        if game_over then return end
+        for i, row_data in ipairs(lanes) do
+            beam_phase[i] = beam_phase[i] + dt * BEAM_SPEED
+            local offset = (math.sin(beam_phase[i]) + 1) / 2 * (1 - BEAM_WIDTH)
+            row_data.beam.Position = UDim2.new(offset, 0, 0, 0)
+        end
+    end)
+
+    local time_elapsed = 0
+    timer_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        time_elapsed = time_elapsed + dt
+        local left = TIME_LIMIT - time_elapsed
+        if left <= 0 then
+            timer_label.Text = "00:00"
+            fail("Time's up!")
+            return
+        end
+        local mins = math.floor(left / 60)
+        local secs = math.floor(left % 60)
+        timer_label.Text = string.format("%02d:%02d", mins, secs)
+        if left <= 5 then timer_label.TextColor3 = RED end
+    end)
+end
+
+g.signal_triangulation_minigame = function()
+    if g.signal_triangulation_cooldown and tick() - g.signal_triangulation_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.signal_triangulation_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local UserInputService = cloneref and cloneref(game:GetService("UserInputService")) or game:GetService("UserInputService")
+    local preset = get_preset("signal")
+    local DARK = Color3.fromRGB(10, 12, 16)
+    local CYAN = Color3.fromRGB(60, 200, 220)
+    local MUTED = Color3.fromRGB(90, 100, 110)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local RED = Color3.fromRGB(200, 60, 60)
+    local GREEN = Color3.fromRGB(60, 200, 100)
+    local TOLERANCE = preset.tolerance
+    local DRIFT_SPEED = preset.drift_speed
+    local TIME_LIMIT = preset.time_limit
+    local target_pos = math.random(10, 90)
+    local handle_pos = 50
+    local dragging = false
+    local game_over = false
+    local drift_dir = 1
+    local timer_conn = nil
+    local input_ended_conn = nil
+    local input_changed_conn = nil
+
+    if CoreGui:FindFirstChild("SignalTriangulationGUI") then CoreGui.SignalTriangulationGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SignalTriangulationGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 360, 0, 260)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = CYAN
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.7, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// SIGNAL TRIANGULATION //"
+    title.TextColor3 = CYAN
+    title.Font = Enum.Font.Code
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local timer_label = Instance.new("TextLabel")
+    timer_label.Size = UDim2.new(0.2, 0, 0, 36)
+    timer_label.Position = UDim2.new(0.72, 0, 0, 6)
+    timer_label.BackgroundTransparency = 1
+    timer_label.Text = "00:" .. string.format("%02d", TIME_LIMIT)
+    timer_label.TextColor3 = WHITE
+    timer_label.Font = Enum.Font.Code
+    timer_label.TextSize = 15
+    timer_label.TextXAlignment = Enum.TextXAlignment.Right
+    timer_label.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local strength_label = Instance.new("TextLabel")
+    strength_label.Size = UDim2.new(1, -20, 0, 30)
+    strength_label.Position = UDim2.new(0, 10, 0, 48)
+    strength_label.BackgroundTransparency = 1
+    strength_label.Text = "SIGNAL: 0%"
+    strength_label.TextColor3 = CYAN
+    strength_label.Font = Enum.Font.Code
+    strength_label.TextSize = 20
+    strength_label.TextXAlignment = Enum.TextXAlignment.Center
+    strength_label.Parent = frame
+
+    local strength_bar_bg = Instance.new("Frame")
+    strength_bar_bg.Size = UDim2.new(1, -40, 0, 14)
+    strength_bar_bg.Position = UDim2.new(0, 20, 0, 84)
+    strength_bar_bg.BackgroundColor3 = Color3.fromRGB(20, 22, 26)
+    strength_bar_bg.BorderSizePixel = 0
+    strength_bar_bg.Parent = frame
+    Instance.new("UICorner", strength_bar_bg).CornerRadius = UDim.new(0, 8)
+
+    local strength_bar_fill = Instance.new("Frame")
+    strength_bar_fill.Size = UDim2.new(0, 0, 1, 0)
+    strength_bar_fill.BackgroundColor3 = CYAN
+    strength_bar_fill.BorderSizePixel = 0
+    strength_bar_fill.Parent = strength_bar_bg
+    Instance.new("UICorner", strength_bar_fill).CornerRadius = UDim.new(0, 8)
+
+    local slider_bg = Instance.new("Frame")
+    slider_bg.Size = UDim2.new(1, -40, 0, 8)
+    slider_bg.Position = UDim2.new(0, 20, 0, 150)
+    slider_bg.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+    slider_bg.BorderSizePixel = 0
+    slider_bg.Parent = frame
+    Instance.new("UICorner", slider_bg).CornerRadius = UDim.new(0, 4)
+
+    local handle = Instance.new("TextButton")
+    handle.Size = UDim2.new(0, 24, 0, 24)
+    handle.AnchorPoint = Vector2.new(0.5, 0.5)
+    handle.Position = UDim2.new(handle_pos / 100, 0, 0.5, 0)
+    handle.BackgroundColor3 = WHITE
+    handle.Text = ""
+    handle.BorderSizePixel = 0
+    handle.Parent = slider_bg
+    Instance.new("UICorner", handle).CornerRadius = UDim.new(0.5, 0)
+
+    local lock_btn = Instance.new("TextButton")
+    lock_btn.Size = UDim2.new(0, 140, 0, 36)
+    lock_btn.AnchorPoint = Vector2.new(0.5, 0)
+    lock_btn.Position = UDim2.new(0.5, 0, 0, 190)
+    lock_btn.BackgroundColor3 = Color3.fromRGB(20, 34, 36)
+    lock_btn.Text = "LOCK SIGNAL"
+    lock_btn.Font = Enum.Font.GothamBold
+    lock_btn.TextSize = 13
+    lock_btn.TextColor3 = CYAN
+    lock_btn.BorderSizePixel = 0
+    lock_btn.Parent = frame
+    Instance.new("UICorner", lock_btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", lock_btn).Color = CYAN
+
+    local function cleanup()
+        if timer_conn then timer_conn:Disconnect() end
+        if input_ended_conn then input_ended_conn:Disconnect() end
+        if input_changed_conn then input_changed_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.signal_triangulation_cooldown = tick()
+        if g.notify then g.notify("Success", "Signal triangulated!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Signal lost!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function update_strength()
+        local diff = math.abs(handle_pos - target_pos)
+        local strength = math.clamp(100 - diff * 2, 0, 100)
+        strength_label.Text = "SIGNAL: " .. math.floor(strength) .. "%"
+        strength_bar_fill.Size = UDim2.new(strength / 100, 0, 1, 0)
+        strength_bar_fill.BackgroundColor3 = strength > 80 and GREEN or CYAN
+    end
+
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+        end
+    end)
+
+    input_ended_conn = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    input_changed_conn = UserInputService.InputChanged:Connect(function(input)
+        if not dragging or game_over then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        local bar_pos = slider_bg.AbsolutePosition.X
+        local bar_size = slider_bg.AbsoluteSize.X
+        local mouse_x = input.Position.X
+        local scale = math.clamp((mouse_x - bar_pos) / bar_size, 0, 1)
+        handle_pos = scale * 100
+        handle.Position = UDim2.new(scale, 0, 0.5, 0)
+        update_strength()
+    end)
+
+    lock_btn.MouseButton1Click:Connect(function()
+        if game_over then return end
+        if math.abs(handle_pos - target_pos) <= TOLERANCE then
+            win()
+        else
+            fail("Signal lost!")
+        end
+    end)
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Signal triangulation cancelled.", 3) end
+        cleanup()
+    end)
+
+    update_strength()
+
+    local time_elapsed = 0
+    timer_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        time_elapsed = time_elapsed + dt
+        if DRIFT_SPEED > 0 then
+            target_pos = target_pos + DRIFT_SPEED * dt * drift_dir
+            if target_pos >= 95 then drift_dir = -1 end
+            if target_pos <= 5 then drift_dir = 1 end
+            update_strength()
+        end
+        local left = TIME_LIMIT - time_elapsed
+        if left <= 0 then
+            timer_label.Text = "00:00"
+            fail("Time's up!")
+            return
+        end
+        local mins = math.floor(left / 60)
+        local secs = math.floor(left % 60)
+        timer_label.Text = string.format("%02d:%02d", mins, secs)
+        if left <= 5 then timer_label.TextColor3 = RED end
+    end)
+end
+
+g.pipe_reroute_minigame = function()
+    if g.pipe_reroute_cooldown and tick() - g.pipe_reroute_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.pipe_reroute_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("pipe")
+    local DARK = Color3.fromRGB(14, 16, 14)
+    local TEAL = Color3.fromRGB(60, 200, 170)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local MUTED = Color3.fromRGB(90, 100, 95)
+    local GOLD = Color3.fromRGB(210, 170, 60)
+    local RED = Color3.fromRGB(200, 60, 60)
+    local GRID_SIZE = preset.grid_size
+    local LOCKED_COUNT = preset.locked_count
+    local TIME_LIMIT = preset.time_limit
+    local DELTA = {[1] = {-1, 0}, [2] = {0, 1}, [3] = {1, 0}, [4] = {0, -1}}
+    local OPPOSITE = {[1] = 3, [2] = 4, [3] = 1, [4] = 2}
+    local GLYPHS_STRAIGHT = {"│", "─"}
+    local GLYPHS_ELBOW = {"└", "┌", "┐", "┘"}
+    local grid_data = {}
+    local game_over = false
+    local timer_conn = nil
+
+    for r = 1, GRID_SIZE do
+        grid_data[r] = {}
+        for c = 1, GRID_SIZE do
+            grid_data[r][c] = {
+                kind = math.random(1, 2) == 1 and "straight" or "elbow",
+                rotation = math.random(0, 3),
+                locked = false,
+            }
+        end
+    end
+
+    local locked_set = 0
+    while locked_set < LOCKED_COUNT do
+        local r = math.random(1, GRID_SIZE)
+        local c = math.random(1, GRID_SIZE)
+        if not grid_data[r][c].locked then
+            grid_data[r][c].locked = true
+            locked_set = locked_set + 1
+        end
+    end
+
+    local function connections_for(tile)
+        if tile.kind == "straight" then
+            if tile.rotation % 2 == 0 then return {[1] = true, [3] = true} else return {[2] = true, [4] = true} end
+        else
+            local a = ((1 - 1 + tile.rotation) % 4) + 1
+            local b = ((2 - 1 + tile.rotation) % 4) + 1
+            return {[a] = true, [b] = true}
+        end
+    end
+
+    local function glyph_for(tile)
+        if tile.kind == "straight" then
+            return tile.rotation % 2 == 0 and GLYPHS_STRAIGHT[1] or GLYPHS_STRAIGHT[2]
+        else
+            return GLYPHS_ELBOW[tile.rotation + 1]
+        end
+    end
+
+    local function check_solved()
+        local visited = {}
+        local queue = {{1, 1}}
+        visited["1_1"] = true
+        while #queue > 0 do
+            local cur = table.remove(queue)
+            local r, c = cur[1], cur[2]
+            if r == GRID_SIZE and c == GRID_SIZE then return true end
+            local conns = connections_for(grid_data[r][c])
+            for dir, open in pairs(conns) do
+                if open then
+                    local delta = DELTA[dir]
+                    local nr, nc = r + delta[1], c + delta[2]
+                    if nr >= 1 and nr <= GRID_SIZE and nc >= 1 and nc <= GRID_SIZE then
+                        local key = nr .. "_" .. nc
+                        if not visited[key] then
+                            local neighbor_conns = connections_for(grid_data[nr][nc])
+                            if neighbor_conns[OPPOSITE[dir]] then
+                                visited[key] = true
+                                table.insert(queue, {nr, nc})
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return false
+    end
+
+    if CoreGui:FindFirstChild("PipeRerouteGUI") then CoreGui.PipeRerouteGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "PipeRerouteGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local cell_size = 52
+    local grid_pixel = GRID_SIZE * cell_size
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, grid_pixel + 100, 0, grid_pixel + 130)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = TEAL
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.7, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// PIPE REROUTE //"
+    title.TextColor3 = TEAL
+    title.Font = Enum.Font.Code
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local timer_label = Instance.new("TextLabel")
+    timer_label.Size = UDim2.new(0.2, 0, 0, 36)
+    timer_label.Position = UDim2.new(0.6, 0, 0, 6)
+    timer_label.BackgroundTransparency = 1
+    timer_label.Text = "00:" .. string.format("%02d", TIME_LIMIT)
+    timer_label.TextColor3 = WHITE
+    timer_label.Font = Enum.Font.Code
+    timer_label.TextSize = 15
+    timer_label.TextXAlignment = Enum.TextXAlignment.Right
+    timer_label.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local hint_label = Instance.new("TextLabel")
+    hint_label.Size = UDim2.new(1, -20, 0, 20)
+    hint_label.Position = UDim2.new(0, 10, 0, 44)
+    hint_label.BackgroundTransparency = 1
+    hint_label.Text = "Connect top-left to bottom-right."
+    hint_label.TextColor3 = MUTED
+    hint_label.Font = Enum.Font.Code
+    hint_label.TextSize = 11
+    hint_label.TextScaled = true
+    hint_label.TextXAlignment = Enum.TextXAlignment.Left
+    hint_label.Parent = frame
+
+    local grid_frame = Instance.new("Frame")
+    grid_frame.Size = UDim2.new(0, grid_pixel, 0, grid_pixel)
+    grid_frame.AnchorPoint = Vector2.new(0.5, 0)
+    grid_frame.Position = UDim2.new(0.5, 0, 0, 70)
+    grid_frame.BackgroundTransparency = 1
+    grid_frame.Parent = frame
+
+    local function cleanup()
+        if timer_conn then timer_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.pipe_reroute_cooldown = tick()
+        if g.notify then g.notify("Success", "Circuit rerouted!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Time's up!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    for r = 1, GRID_SIZE do
+        for c = 1, GRID_SIZE do
+            local tile = grid_data[r][c]
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(0, cell_size - 6, 0, cell_size - 6)
+            btn.Position = UDim2.new(0, (c - 1) * cell_size, 0, (r - 1) * cell_size)
+            btn.BackgroundColor3 = tile.locked and Color3.fromRGB(50, 40, 15) or Color3.fromRGB(22, 24, 22)
+            btn.Text = glyph_for(tile)
+            btn.Font = Enum.Font.Code
+            btn.TextSize = 26
+            btn.TextColor3 = tile.locked and GOLD or TEAL
+            btn.BorderSizePixel = 0
+            btn.Parent = grid_frame
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+            btn.MouseButton1Click:Connect(function()
+                if game_over or tile.locked then return end
+                tile.rotation = (tile.rotation + 1) % 4
+                btn.Text = glyph_for(tile)
+                if check_solved() then win() end
+            end)
+        end
+    end
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Pipe reroute cancelled.", 3) end
+        cleanup()
+    end)
+
+    local time_elapsed = 0
+    timer_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        time_elapsed = time_elapsed + dt
+        local left = TIME_LIMIT - time_elapsed
+        if left <= 0 then
+            timer_label.Text = "00:00"
+            fail("Time's up!")
+            return
+        end
+        local mins = math.floor(left / 60)
+        local secs = math.floor(left % 60)
+        timer_label.Text = string.format("%02d:%02d", mins, secs)
+        if left <= 5 then timer_label.TextColor3 = RED end
+    end)
+
+    if check_solved() then win() end
+end
+
+g.steady_hand_minigame = function()
+    if g.steady_hand_cooldown and tick() - g.steady_hand_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.steady_hand_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("steady")
+    local DARK = Color3.fromRGB(14, 14, 16)
+    local ORANGE = Color3.fromRGB(230, 140, 40)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local RED = Color3.fromRGB(200, 60, 60)
+    local GREEN = Color3.fromRGB(60, 200, 100)
+    local MUTED = Color3.fromRGB(90, 90, 100)
+    local DRIFT_FORCE = preset.drift_force
+    local ZONE_WIDTH = preset.zone_width
+    local HOLD_DURATION = preset.hold_duration
+    local TIME_LIMIT = preset.time_limit
+    local needle_pos = 0.5
+    local velocity = 0
+    local holding = false
+    local progress = 0
+    local game_over = false
+    local timer_conn = nil
+    local heartbeat_conn = nil
+
+    if CoreGui:FindFirstChild("SteadyHandGUI") then CoreGui.SteadyHandGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SteadyHandGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 360, 0, 260)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = ORANGE
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.7, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// STEADY HAND //"
+    title.TextColor3 = ORANGE
+    title.Font = Enum.Font.Code
+    title.TextSize = 15
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local timer_label = Instance.new("TextLabel")
+    timer_label.Size = UDim2.new(0.2, 0, 0, 36)
+    timer_label.Position = UDim2.new(0.72, 0, 0, 6)
+    timer_label.BackgroundTransparency = 1
+    timer_label.Text = "00:" .. string.format("%02d", TIME_LIMIT)
+    timer_label.TextColor3 = WHITE
+    timer_label.Font = Enum.Font.Code
+    timer_label.TextSize = 15
+    timer_label.TextXAlignment = Enum.TextXAlignment.Right
+    timer_label.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local bar_bg = Instance.new("Frame")
+    bar_bg.Size = UDim2.new(1, -40, 0, 40)
+    bar_bg.Position = UDim2.new(0, 20, 0, 60)
+    bar_bg.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+    bar_bg.BorderSizePixel = 0
+    bar_bg.Parent = frame
+    Instance.new("UICorner", bar_bg).CornerRadius = UDim.new(0, 10)
+
+    local zone = Instance.new("Frame")
+    zone.Size = UDim2.new(ZONE_WIDTH, 0, 1, 0)
+    zone.Position = UDim2.new(0.5 - ZONE_WIDTH / 2, 0, 0, 0)
+    zone.BackgroundColor3 = GREEN
+    zone.BackgroundTransparency = 0.6
+    zone.BorderSizePixel = 0
+    zone.Parent = bar_bg
+    Instance.new("UICorner", zone).CornerRadius = UDim.new(0, 10)
+
+    local needle = Instance.new("Frame")
+    needle.Size = UDim2.new(0, 6, 1, 10)
+    needle.AnchorPoint = Vector2.new(0.5, 0.5)
+    needle.Position = UDim2.new(needle_pos, 0, 0.5, 0)
+    needle.BackgroundColor3 = WHITE
+    needle.BorderSizePixel = 0
+    needle.Parent = bar_bg
+    Instance.new("UICorner", needle).CornerRadius = UDim.new(0, 3)
+
+    local progress_bg = Instance.new("Frame")
+    progress_bg.Size = UDim2.new(1, -40, 0, 14)
+    progress_bg.Position = UDim2.new(0, 20, 0, 116)
+    progress_bg.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+    progress_bg.BorderSizePixel = 0
+    progress_bg.Parent = frame
+    Instance.new("UICorner", progress_bg).CornerRadius = UDim.new(0, 8)
+
+    local progress_fill = Instance.new("Frame")
+    progress_fill.Size = UDim2.new(0, 0, 1, 0)
+    progress_fill.BackgroundColor3 = GREEN
+    progress_fill.BorderSizePixel = 0
+    progress_fill.Parent = progress_bg
+    Instance.new("UICorner", progress_fill).CornerRadius = UDim.new(0, 8)
+
+    local hint_label = Instance.new("TextLabel")
+    hint_label.Size = UDim2.new(1, -40, 0, 18)
+    hint_label.Position = UDim2.new(0, 20, 0, 138)
+    hint_label.BackgroundTransparency = 1
+    hint_label.Text = "Hold STEADY to keep the needle in the zone"
+    hint_label.TextColor3 = MUTED
+    hint_label.Font = Enum.Font.Code
+    hint_label.TextSize = 11
+    hint_label.TextXAlignment = Enum.TextXAlignment.Center
+    hint_label.Parent = frame
+
+    local steady_btn = Instance.new("TextButton")
+    steady_btn.Size = UDim2.new(0, 160, 0, 44)
+    steady_btn.AnchorPoint = Vector2.new(0.5, 0)
+    steady_btn.Position = UDim2.new(0.5, 0, 0, 168)
+    steady_btn.BackgroundColor3 = Color3.fromRGB(40, 30, 16)
+    steady_btn.Text = "STEADY"
+    steady_btn.Font = Enum.Font.GothamBold
+    steady_btn.TextSize = 14
+    steady_btn.TextColor3 = ORANGE
+    steady_btn.BorderSizePixel = 0
+    steady_btn.Parent = frame
+    Instance.new("UICorner", steady_btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", steady_btn).Color = ORANGE
+
+    local function cleanup()
+        if timer_conn then timer_conn:Disconnect() end
+        if heartbeat_conn then heartbeat_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.steady_hand_cooldown = tick()
+        if g.notify then g.notify("Success", "Held steady!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Hand slipped!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    steady_btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            holding = true
+        end
+    end)
+
+    steady_btn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            holding = false
+        end
+    end)
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Steady hand cancelled.", 3) end
+        cleanup()
+    end)
+
+    heartbeat_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        local drift = (math.random() - 0.5) * DRIFT_FORCE
+        velocity = velocity + drift * dt
+        if holding then
+            velocity = velocity + (0.5 - needle_pos) * DRIFT_FORCE * 1.2 * dt
+        end
+        velocity = velocity * 0.96
+        needle_pos = math.clamp(needle_pos + velocity * dt, 0, 1)
+        needle.Position = UDim2.new(needle_pos, 0, 0.5, 0)
+
+        local zone_min = 0.5 - ZONE_WIDTH / 2
+        local zone_max = 0.5 + ZONE_WIDTH / 2
+        if needle_pos >= zone_min and needle_pos <= zone_max then
+            progress = progress + dt
+            progress_fill.BackgroundColor3 = GREEN
+        else
+            progress = math.max(0, progress - dt * 2)
+            progress_fill.BackgroundColor3 = RED
+        end
+        progress_fill.Size = UDim2.new(math.clamp(progress / HOLD_DURATION, 0, 1), 0, 1, 0)
+        if progress >= HOLD_DURATION then
+            win()
+        end
+    end)
+
+    local time_elapsed = 0
+    timer_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        time_elapsed = time_elapsed + dt
+        local left = TIME_LIMIT - time_elapsed
+        if left <= 0 then
+            timer_label.Text = "00:00"
+            fail("Time's up!")
+            return
+        end
+        local mins = math.floor(left / 60)
+        local secs = math.floor(left % 60)
+        timer_label.Text = string.format("%02d:%02d", mins, secs)
+        if left <= 5 then timer_label.TextColor3 = RED end
+    end)
+end
+
+g.rhythm_splice_minigame = function()
+    if g.rhythm_splice_cooldown and tick() - g.rhythm_splice_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.rhythm_splice_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("rhythm")
+    local DARK = Color3.fromRGB(12, 12, 18)
+    local PINK = Color3.fromRGB(230, 80, 160)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local MUTED = Color3.fromRGB(90, 90, 100)
+    local NOTE_COUNT = preset.note_count
+    local NOTE_SPEED = preset.note_speed
+    local HIT_WINDOW = preset.hit_window
+    local MAX_MISSES = preset.max_misses
+    local spawn_interval = 1.1
+    local notes_spawned = 0
+    local notes_resolved = 0
+    local misses = 0
+    local active_notes = {}
+    local game_over = false
+    local elapsed = 0
+    local next_spawn = 0
+    local render_conn = nil
+    if CoreGui:FindFirstChild("RhythmSpliceGUI") then CoreGui.RhythmSpliceGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "RhythmSpliceGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 420, 0, 220)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = PINK
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.6, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// RHYTHM SPLICE //"
+    title.TextColor3 = PINK
+    title.Font = Enum.Font.Code
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local status_label = Instance.new("TextLabel")
+    status_label.Size = UDim2.new(0.35, 0, 0, 36)
+    status_label.Position = UDim2.new(0.62, 0, 0, 6)
+    status_label.BackgroundTransparency = 1
+    status_label.Text = "Misses: 0 / " .. MAX_MISSES
+    status_label.TextColor3 = WHITE
+    status_label.Font = Enum.Font.Code
+    status_label.TextSize = 12
+    status_label.TextXAlignment = Enum.TextXAlignment.Right
+    status_label.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local lane = Instance.new("Frame")
+    lane.Size = UDim2.new(1, -40, 0, 60)
+    lane.Position = UDim2.new(0, 20, 0, 60)
+    lane.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+    lane.BorderSizePixel = 0
+    lane.ClipsDescendants = true
+    lane.Parent = frame
+    Instance.new("UICorner", lane).CornerRadius = UDim.new(0, 10)
+
+    local hit_line = Instance.new("Frame")
+    hit_line.Size = UDim2.new(0, 4, 1, 0)
+    hit_line.Position = UDim2.new(0, 40, 0, 0)
+    hit_line.BackgroundColor3 = PINK
+    hit_line.BorderSizePixel = 0
+    hit_line.Parent = lane
+    Instance.new("UICorner", hit_line).CornerRadius = UDim.new(0, 2)
+
+    local hit_btn = Instance.new("TextButton")
+    hit_btn.Size = UDim2.new(0, 160, 0, 44)
+    hit_btn.AnchorPoint = Vector2.new(0.5, 0)
+    hit_btn.Position = UDim2.new(0.5, 0, 0, 140)
+    hit_btn.BackgroundColor3 = Color3.fromRGB(40, 16, 30)
+    hit_btn.Text = "HIT"
+    hit_btn.Font = Enum.Font.GothamBold
+    hit_btn.TextSize = 16
+    hit_btn.TextColor3 = PINK
+    hit_btn.BorderSizePixel = 0
+    hit_btn.Parent = frame
+    Instance.new("UICorner", hit_btn).CornerRadius = UDim.new(0, 10)
+    Instance.new("UIStroke", hit_btn).Color = PINK
+
+    local function cleanup()
+        if render_conn then render_conn:Disconnect() end
+        if gui then gui:Destroy() end
+        getgenv().Keybind_Input_Disabled_For_Mini_Game = false
+    end
+
+    local function win()
+        game_over = true
+        g.rhythm_splice_cooldown = tick()
+        if g.notify then g.notify("Success", "Perfect splice!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Splice failed!", 5) end
+        task.delay(0.5, cleanup)
+    end
+
+    local function register_miss()
+        misses = misses + 1
+        notes_resolved = notes_resolved + 1
+        status_label.Text = "Misses: " .. misses .. " / " .. MAX_MISSES
+        if misses >= MAX_MISSES then
+            fail("Too many misses!")
+        elseif notes_resolved >= NOTE_COUNT and not game_over then
+            win()
+        end
+    end
+
+    local function register_hit()
+        notes_resolved = notes_resolved + 1
+        if notes_resolved >= NOTE_COUNT and not game_over then win() end
+    end
+
+    hit_btn.MouseButton1Click:Connect(function()
+        if game_over then return end
+        local best_index = nil
+        local best_dist = math.huge
+        for i, note in ipairs(active_notes) do
+            local dist = math.abs(note.frame.Position.X.Offset - 40)
+            if dist < best_dist then
+                best_dist = dist
+                best_index = i
+            end
+        end
+        if best_index and best_dist <= HIT_WINDOW * NOTE_SPEED then
+            active_notes[best_index].frame:Destroy()
+            table.remove(active_notes, best_index)
+            register_hit()
+        end
+    end)
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Rhythm splice cancelled.", 3) end
+        cleanup()
+    end)
+
+    render_conn = RunService.Heartbeat:Connect(function(dt)
+        if game_over then return end
+        elapsed = elapsed + dt
+        local lane_width = lane.AbsoluteSize.X
+
+        if notes_spawned < NOTE_COUNT and elapsed >= next_spawn then
+            notes_spawned = notes_spawned + 1
+            next_spawn = elapsed + spawn_interval
+            local note = Instance.new("Frame")
+            note.Size = UDim2.new(0, 26, 0, 26)
+            note.AnchorPoint = Vector2.new(0.5, 0.5)
+            note.Position = UDim2.new(0, lane_width - 20, 0.5, 0)
+            note.BackgroundColor3 = PINK
+            note.BorderSizePixel = 0
+            note.Parent = lane
+            Instance.new("UICorner", note).CornerRadius = UDim.new(0.5, 0)
+            table.insert(active_notes, {frame = note, spawn_time = elapsed})
+        end
+
+        for i = #active_notes, 1, -1 do
+            local note = active_notes[i]
+            local traveled = NOTE_SPEED * (elapsed - note.spawn_time)
+            local new_x = (lane_width - 20) - traveled
+            note.frame.Position = UDim2.new(0, new_x, 0.5, 0)
+            if new_x < 40 - HIT_WINDOW * NOTE_SPEED then
+                note.frame:Destroy()
+                table.remove(active_notes, i)
+                register_miss()
+            end
+        end
+    end)
+end
+
+g.card_recall_minigame = function()
+    if g.card_recall_cooldown and tick() - g.card_recall_cooldown < 30 then
+        local remaining = math.ceil(30 - (tick() - g.card_recall_cooldown))
+        if g.notify then g.notify("Warning", "You must wait " .. remaining .. " seconds before playing again.", 5) end
+        return
+    end
+
+    local preset = get_preset("recall")
+    local DARK = Color3.fromRGB(14, 12, 18)
+    local PURPLE = Color3.fromRGB(160, 100, 220)
+    local DIM_PURPLE = Color3.fromRGB(50, 40, 70)
+    local WHITE = Color3.fromRGB(240, 240, 240)
+    local RED = Color3.fromRGB(200, 60, 60)
+    local GREEN = Color3.fromRGB(60, 200, 100)
+    local CARD_COUNT = preset.card_count
+    local SHOW_TIME = preset.show_time
+    local GRID_COLS = preset.grid_cols
+    local reveal_order = {}
+    for i = 1, CARD_COUNT do reveal_order[i] = i end
+    for i = CARD_COUNT, 2, -1 do
+        local j = math.random(1, i)
+        reveal_order[i], reveal_order[j] = reveal_order[j], reveal_order[i]
+    end
+
+    local player_index = 1
+    local accepting_input = false
+    local game_over = false
+    if CoreGui:FindFirstChild("CardRecallGUI") then CoreGui.CardRecallGUI:Destroy() end
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "CardRecallGUI"
+    gui.IgnoreGuiInset = true
+    gui.ResetOnSpawn = false
+    gui.Parent = CoreGui
+
+    getgenv().Keybind_Input_Disabled_For_Mini_Game = true
+    local grid_rows = math.ceil(CARD_COUNT / GRID_COLS)
+    local cell_size = 64
+    local grid_width = GRID_COLS * cell_size
+    local grid_height = grid_rows * cell_size
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, grid_width + 40, 0, grid_height + 110)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Position = UDim2.fromScale(0.5, 0.5)
+    frame.BackgroundColor3 = DARK
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 16)
+    local fstroke = Instance.new("UIStroke", frame)
+    fstroke.Color = PURPLE
+    fstroke.Thickness = 1
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.7, 0, 0, 36)
+    title.Position = UDim2.new(0, 12, 0, 6)
+    title.BackgroundTransparency = 1
+    title.Text = "// VAULT RECALL //"
+    title.TextColor3 = PURPLE
+    title.Font = Enum.Font.Code
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = frame
+
+    local cancel = Instance.new("TextButton")
+    cancel.Size = UDim2.new(0, 28, 0, 28)
+    cancel.Position = UDim2.new(1, -34, 0, 8)
+    cancel.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+    cancel.Text = "X"
+    cancel.TextScaled = true
+    cancel.Font = Enum.Font.GothamBold
+    cancel.TextColor3 = WHITE
+    cancel.BorderSizePixel = 0
+    cancel.Parent = frame
+    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
+
+    local status_label = Instance.new("TextLabel")
+    status_label.Size = UDim2.new(1, -20, 0, 22)
+    status_label.Position = UDim2.new(0, 10, 0, 44)
+    status_label.BackgroundTransparency = 1
+    status_label.Text = "Watch the sequence..."
+    status_label.TextColor3 = DIM_PURPLE
+    status_label.Font = Enum.Font.Code
+    status_label.TextSize = 12
+    status_label.TextXAlignment = Enum.TextXAlignment.Center
+    status_label.Parent = frame
+
+    local grid_frame = Instance.new("Frame")
+    grid_frame.Size = UDim2.new(0, grid_width, 0, grid_height)
+    grid_frame.AnchorPoint = Vector2.new(0.5, 0)
+    grid_frame.Position = UDim2.new(0.5, 0, 0, 74)
+    grid_frame.BackgroundTransparency = 1
+    grid_frame.Parent = frame
+
+    local card_buttons = {}
+    for i = 1, CARD_COUNT do
+        local row = math.floor((i - 1) / GRID_COLS)
+        local col = (i - 1) % GRID_COLS
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, cell_size - 8, 0, cell_size - 8)
+        btn.Position = UDim2.new(0, col * cell_size, 0, row * cell_size)
+        btn.BackgroundColor3 = DIM_PURPLE
+        btn.Text = "?"
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 18
+        btn.TextColor3 = WHITE
+        btn.BorderSizePixel = 0
+        btn.Parent = grid_frame
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        card_buttons[i] = btn
+    end
+
+    local function cleanup() getgenv().Keybind_Input_Disabled_For_Mini_Game = false if gui then gui:Destroy() end end
+    local function win()
+        game_over = true
+        g.card_recall_cooldown = tick()
+        if g.notify then g.notify("Success", "Vault sequence recalled!", 5) end
+        task.delay(0.4, cleanup)
+    end
+
+    local function fail(msg)
+        game_over = true
+        if g.notify then g.notify("Error", msg or "Wrong card!", 5) end
+        task.delay(0.4, cleanup)
+    end
+
+    local function show_sequence(step)
+        if step > CARD_COUNT then
+            status_label.Text = "Your turn! Repeat the sequence"
+            status_label.TextColor3 = WHITE
+            accepting_input = true
+            return
+        end
+        local card_index = reveal_order[step]
+        local btn = card_buttons[card_index]
+        btn.BackgroundColor3 = PURPLE
+        btn.Text = tostring(step)
+        task.delay(SHOW_TIME, function()
+            if game_over then return end
+            btn.BackgroundColor3 = DIM_PURPLE
+            btn.Text = "?"
+            task.delay(0.15, function()
+                show_sequence(step + 1)
+            end)
+        end)
+    end
+
+    for i, btn in ipairs(card_buttons) do
+        btn.MouseButton1Click:Connect(function()
+            if game_over or not accepting_input then return end
+            if reveal_order[player_index] == i then
+                btn.BackgroundColor3 = GREEN
+                player_index = player_index + 1
+                if player_index > CARD_COUNT then
+                    win()
+                end
+            else
+                btn.BackgroundColor3 = RED
+                fail("Wrong card!")
+            end
+        end)
+    end
+
+    cancel.MouseButton1Click:Connect(function()
+        if g.notify then g.notify("Info", "Vault recall cancelled.", 3) end
+        cleanup()
+    end)
+
+    task.delay(0.6, function() show_sequence(1) end)
+end
+
 g.open_minigame_menu = function()
-    local CoreGui = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
-    if CoreGui:FindFirstChild("MinigameMenuGUI") and CoreGui:FindFirstChild("MinigameMenuGUI"):IsA("ScreenGui") then CoreGui.MinigameMenuGUI:FindFirstChildOfClass("Frame").Visible = true return end
+    if CoreGui:FindFirstChild("MinigameMenuGUI") and CoreGui:FindFirstChild("MinigameMenuGUI"):IsA("ScreenGui") then CoreGui.MinigameMenuGUI.Enabled = true return end
     local DARK        = Color3.fromRGB(18, 18, 18)
     local SURFACE     = Color3.fromRGB(26, 26, 26)
     local BORDER      = Color3.fromRGB(50, 50, 50)
@@ -1901,77 +3722,92 @@ g.open_minigame_menu = function()
     local YELLOW_C    = Color3.fromRGB(220, 160, 30)
     local GAMES = {
         {
+            key         = "memory",
             name        = "Memory Grid",
             sub         = "Memorize the pattern, then tap the tiles",
-            difficulty  = "Easy",
-            diff_color  = GREEN_C,
-            win_coins   = "+3",
-            loss_coins  = "-5",
-            desc        = "A 5x5 grid lights up 6-9 tiles for 10 seconds. Memorize their positions, then click every highlighted tile before making 3 mistakes.",
+            desc        = "A 5x5 grid lights up several tiles briefly. Memorize their positions, then click every highlighted tile before making too many mistakes. Difficulty changes show time, mistake tolerance, and pattern size.",
             fn          = function() g.Memory_Mini_Game_GUI() end,
         },
         {
+            key         = "reaction",
             name        = "Reaction Time",
-            sub         = "Land the moving bar in the zone 5 times successfully",
-            difficulty  = "Medium",
-            diff_color  = YELLOW_C,
-            win_coins   = "+15",
-            loss_coins  = "-5",
-            desc        = "A bar bounces left and right at increasing speed. Click when it overlaps the purple target zone. Hit it 5 times to win — miss 3 and it's over.",
+            sub         = "Land the moving bar in the zone repeatedly",
+            desc        = "A bar bounces left and right at increasing speed. Click when it overlaps the purple target zone. Difficulty changes required wins, miss tolerance, starting speed, and how tight a 'PERFECT' hit needs to be.",
             fn          = function() g.reaction_time_minigame() end,
         },
         {
+            key         = "keypad",
             name        = "Keypad Hack",
-            sub         = "Crack the 4-digit code in 5 attempts",
-            difficulty  = "Master",
-            diff_color  = RED_C,
-            win_coins   = "+30",
-            loss_coins  = "-10",
-            desc        = "A secret 4-digit code is generated. Enter your guess and receive hints — correct position vs. correct number. Deduce the code in 5 attempts or get locked out.",
+            sub         = "Crack the digit code within your attempts",
+            desc        = "A secret numeric code is generated. Enter your guess and receive hints — correct position vs. correct number. Difficulty changes code length and how many attempts you get before lockout.",
             fn          = function() g.keypad_minigame() end,
         },
         {
+            key         = "hacking",
             name        = "Breach Protocol",
             sub         = "Input the target sequence from the grid",
-            difficulty  = "Medium",
-            diff_color  = YELLOW_C,
-            win_coins   = "+5",
-            loss_coins  = "-5",
-            desc        = "A Cyberpunk-style matrix grid. Alternate selecting columns and rows to build a 4-character sequence matching the target. You have 20 seconds before the breach fails.",
+            desc        = "A Cyberpunk-style matrix grid. Alternate selecting columns and rows to build a character sequence matching the target before time runs out. Difficulty changes sequence length, timer, and grid size.",
             fn          = function() g.hacking_minigame() end,
         },
         {
+            key         = "safe",
             name        = "Safe Cracker",
-            sub         = "Hit 3 target notches on the spinning dial",
-            difficulty  = "Hard",
-            diff_color  = RED_C,
-            win_coins   = "+12",
-            loss_coins  = "-5",
-            desc        = "A dial spins at increasing speed across 20 notches. Click CRACK when the marker lands on the target notch for each of 3 steps. One wrong click and the safe locks.",
+            sub         = "Hit target notches on the spinning dial",
+            desc        = "A dial spins at increasing speed across 20 notches. Click CRACK when the marker lands on the target notch for each step. Difficulty changes step count, dial speed, timer, and hit tolerance.",
             fn          = function() g.safe_cracker_minigame() end,
         },
         {
+            key         = "wire",
             name        = "Wire Cutter",
             sub         = "Cut the correct wire using the intel clues",
-            difficulty  = "Easy",
-            diff_color  = GREEN_C,
-            win_coins   = "+10",
-            loss_coins  = "-5",
-            desc        = "Five wires are presented with partial intel clues about which ones are dangerous. Deduce the safe wire and cut it before the timer runs out.",
+            desc        = "Wires are presented with partial intel clues about which ones are dangerous. Deduce the safe wire and cut it before the timer runs out. Difficulty changes wire count, timer, and how many clues you're given.",
             fn          = function() g.wire_cutter_minigame() end,
         },
         {
+            key         = "simon",
             name        = "Simon Says",
-            sub         = "Repeat the color sequence 5 rounds in a row",
-            difficulty  = "Medium",
-            diff_color  = YELLOW_C,
-            win_coins   = "+10",
-            loss_coins  = "-5",
-            desc        = "Four colored buttons flash a growing sequence each round. Watch carefully then repeat it back in order. One wrong press and you lose. Survive 5 rounds to win.",
+            sub         = "Repeat the growing color sequence",
+            desc        = "Four colored buttons flash a growing sequence each round. Watch carefully then repeat it back in order. Difficulty changes rounds needed to win and how fast the sequence flashes.",
             fn          = function() g.simon_says_minigame() end,
+        },
+        {
+            key = "lockpick", name = "Lockpick", sub = "Turn the pick into the sweet spot without snapping",
+            desc = "A dial sweeps continuously around a pin lock. Hold to build tension while timing your click for when the pick lines up with the sweet spot. Too much tension and the pick snaps. Difficulty changes pin count, sweet spot size, and dial speed.",
+            fn = function() g.lockpick_minigame() end,
+        },
+        {
+            key = "laser", name = "Laser Grid", sub = "Advance through rows without tripping a beam",
+            desc = "A moving laser sweeps across each row. Click Advance to move up one row when the beam isn't on your position. Difficulty changes row count, beam speed, and hazard margin.",
+            fn = function() g.laser_grid_minigame() end,
+        },
+        {
+            key = "signal", name = "Signal Triangulation", sub = "Drag the slider to find the hidden signal",
+            desc = "Drag the handle along the bar and watch the signal strength readout to home in on a hidden target, then lock it in. Difficulty changes tolerance and whether the target drifts.",
+            fn = function() g.signal_triangulation_minigame() end,
+        },
+        {
+            key = "pipe", name = "Pipe Reroute", sub = "Rotate tiles to connect the circuit",
+            desc = "A grid of pipe tiles needs rotating to form a connected path from top-left to bottom-right. Some tiles are locked in place. Difficulty changes grid size, locked tile count, and timer.",
+            fn = function() g.pipe_reroute_minigame() end,
+        },
+        {
+            key = "steady", name = "Steady Hand", sub = "Hold the needle in the zone",
+            desc = "A needle drifts on its own. Hold Steady to counter the drift and keep it inside the target zone for a sustained duration. Difficulty changes drift force, zone width, and hold time.",
+            fn = function() g.steady_hand_minigame() end,
+        },
+        {
+            key = "rhythm", name = "Rhythm Splice", sub = "Hit the notes as they reach the line",
+            desc = "Notes scroll toward a hit line. Click Hit when one lines up. Difficulty changes note count, speed, and hit window.",
+            fn = function() g.rhythm_splice_minigame() end,
+        },
+        {
+            key = "recall", name = "Vault Recall", sub = "Reproduce the flash order on the card grid",
+            desc = "Cards flash in a hidden order. Watch closely, then click them back in the same sequence. Difficulty changes card count and flash speed.",
+            fn = function() g.card_recall_minigame() end,
         },
     }
 
+    local Is_Mobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
     local gui = Instance.new("ScreenGui")
     gui.Name = "MinigameMenuGUI"
     gui.IgnoreGuiInset = true
@@ -1981,7 +3817,11 @@ g.open_minigame_menu = function()
     local outer = Instance.new("Frame")
     outer.AnchorPoint = Vector2.new(0.5, 0.5)
     outer.Position = UDim2.fromScale(0.5, 0.5)
-    outer.Size = UDim2.new(0, 360, 0, 520)
+    if not Is_Mobile then
+        outer.Size = UDim2.new(0, 360, 0, 520)
+    else
+        outer.Size = UDim2.new(0, 360, 0, 350) -- mobile size since it needs to shrink on mobile screens.
+    end
     outer.BackgroundColor3 = DARK
     outer.BorderSizePixel = 0
     outer.Parent = gui
@@ -2008,18 +3848,18 @@ g.open_minigame_menu = function()
     hfix.Parent = header
 
     local title_lbl = Instance.new("TextLabel")
-    title_lbl.Size = UDim2.new(1, -90, 1, 0)
+    title_lbl.Size = UDim2.new(1, -125, 1, 0)
     title_lbl.Position = UDim2.new(0, 14, 0, 0)
     title_lbl.BackgroundTransparency = 1
-    title_lbl.Text = "Flames Hub Mini-Games | Earn Coins"
-    title_lbl.TextScaled = true
+    title_lbl.Text = "Flames Hub | Mini-Games"
+    title_lbl.TextScaled = false
     title_lbl.Font = Enum.Font.GothamBold
     title_lbl.TextSize = 14
     title_lbl.TextColor3 = WHITE
     title_lbl.TextXAlignment = Enum.TextXAlignment.Left
     title_lbl.Parent = header
 
-    dragify(outer)
+    if dragify then dragify(outer) end
     local minimized = false
     local content_frame
     local function make_header_btn(text, x_offset)
@@ -2037,9 +3877,11 @@ g.open_minigame_menu = function()
         return btn
     end
 
-    local close_btn    = make_header_btn("X", -45)
+    local close_btn = make_header_btn("X", -45)
     local minimize_btn = make_header_btn("-", -80)
-    close_btn.MouseButton1Click:Connect(function() gui:FindFirstChildOfClass("Frame").Visible = false end)
+    local difficulty_btn = make_header_btn("⚙", -115)
+    close_btn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+    difficulty_btn.MouseButton1Click:Connect(function() g.open_difficulty_editor() end)
     local function build_content()
         if content_frame then content_frame:Destroy() end
         content_frame = Instance.new("ScrollingFrame")
@@ -2065,6 +3907,8 @@ g.open_minigame_menu = function()
         pad.Parent = content_frame
 
         for i, picked_game in ipairs(GAMES) do
+            local difficulty = g.minigame_difficulty[picked_game.key] or "Medium"
+            local diff_color = DIFFICULTY_COLOR[difficulty]
             local card = Instance.new("Frame")
             card.Size = UDim2.new(1, 0, 0, 110)
             card.BackgroundColor3 = SURFACE
@@ -2091,12 +3935,12 @@ g.open_minigame_menu = function()
             local diff_lbl = Instance.new("TextLabel")
             diff_lbl.Size = UDim2.new(0, 60, 0, 18)
             diff_lbl.Position = UDim2.new(1, -72, 0, 11)
-            diff_lbl.BackgroundColor3 = picked_game.diff_color
+            diff_lbl.BackgroundColor3 = diff_color
             diff_lbl.BackgroundTransparency = 0.75
-            diff_lbl.Text = picked_game.difficulty
+            diff_lbl.Text = difficulty
             diff_lbl.Font = Enum.Font.GothamBold
             diff_lbl.TextSize = 11
-            diff_lbl.TextColor3 = picked_game.diff_color
+            diff_lbl.TextColor3 = diff_color
             diff_lbl.BorderSizePixel = 0
             diff_lbl.Parent = card
             Instance.new("UICorner", diff_lbl).CornerRadius = UDim.new(0, 5)
@@ -2111,18 +3955,6 @@ g.open_minigame_menu = function()
             sub_lbl.TextColor3 = MUTED
             sub_lbl.TextXAlignment = Enum.TextXAlignment.Left
             sub_lbl.Parent = card
-
-            local reward_lbl = Instance.new("TextLabel")
-            reward_lbl.Size = UDim2.new(1, -24, 0, 14)
-            reward_lbl.Position = UDim2.new(0, 12, 0, 50)
-            reward_lbl.BackgroundTransparency = 1
-            reward_lbl.RichText = true
-            reward_lbl.Text = '<font color="rgb(100,200,120)">Win ' .. picked_game.win_coins .. '</font>  <font color="rgb(190,80,80)">Loss ' .. picked_game.loss_coins .. '</font>'
-            reward_lbl.Font = Enum.Font.Gotham
-            reward_lbl.TextSize = 11
-            reward_lbl.TextXAlignment = Enum.TextXAlignment.Left
-            reward_lbl.TextColor3 = MUTED
-            reward_lbl.Parent = card
 
             local desc_open = false
             local desc_lbl = Instance.new("TextLabel")
@@ -2166,17 +3998,19 @@ g.open_minigame_menu = function()
             desc_btn.MouseButton1Click:Connect(function()
                 desc_open = not desc_open
                 if desc_open then
-                    desc_lbl.AutomaticSize = Enum.AutomaticSize.Y
-                    desc_lbl.Size = UDim2.new(1, -24, 0, 0)
+                    local available_width = card.AbsoluteSize.X - 24
+                    local text_bounds = TextService:GetTextSize(
+                        picked_game.desc,
+                        desc_lbl.TextSize,
+                        desc_lbl.Font,
+                        Vector2.new(available_width, math.huge)
+                    )
+                    desc_lbl.Size = UDim2.new(1, -24, 0, text_bounds.Y)
                     desc_lbl.Visible = true
-                    task.defer(function()
-                        local text_height = desc_lbl.AbsoluteSize.Y
-                        card.Size = UDim2.new(1, 0, 0, 112 + text_height + 16)
-                    end)
+                    card.Size = UDim2.new(1, 0, 0, 112 + text_bounds.Y + 16)
                     desc_btn.Text = "(X) Hide"
                 else
                     desc_lbl.Visible = false
-                    desc_lbl.AutomaticSize = Enum.AutomaticSize.None
                     card.Size = UDim2.new(1, 0, 0, 110)
                     desc_btn.Text = "(i) Description"
                 end
@@ -2191,7 +4025,6 @@ g.open_minigame_menu = function()
     end
 
     build_content()
-
     minimize_btn.MouseButton1Click:Connect(function()
         minimized = not minimized
         if minimized then
@@ -2204,6 +4037,18 @@ g.open_minigame_menu = function()
             minimize_btn.Text = "-"
         end
     end)
+
+    if getgenv().Keybind_Toggle_Initialized then pcall(function() getgenv().Keybind_Toggle_Initialized:Disconnect() end) task.wait() getgenv().Keybind_Toggle_Initialized = nil end
+    wait(0.25)
+    local Is_Mobile = UserInputService.TouchEnabled
+    if not Is_Mobile then
+        getgenv().Keybind_Toggle_Initialized = UserInputService.InputBegan:Connect(function(Input, Game_Processed_Event)
+            if Game_Processed_Event then return end
+            if Input.KeyCode == Enum.KeyCode.RightControl and getgenv().Keybind_Input_Disabled_For_Mini_Game == false then
+                if gui and gui:IsA("ScreenGui") then gui.Enabled = not gui.Enabled end
+            end
+        end)
+    end
 end
 
 create_flames_hub_unique_id(game.Players.LocalPlayer.UserId)
@@ -2214,9 +4059,7 @@ local Lib, lib = g.FlamesLibrary
 g.masked_flames_hub_server_ID = masked_flames_hub_server_ID
 wait(0.1)
 if not isVerified() then
-    if g.notify then
-        g.notify("Warning", "Please complete this one time verification to boot into Flames Hub | Script Hub!", 30)
-    end
+    if g.notify then g.notify("Warning", "Please complete this one time verification to boot into Flames Hub | Script Hub!", 30) end
     g.Memory_Mini_Game_GUI()
     waitForGuiGone()
     setVerified()
@@ -2243,18 +4086,16 @@ g.originalIO = g.originalIO or {}
 g.spectateConns = g.spectateConns or {}
 local fw = getgenv().FlamesLibrary.wait
 local name = "administrator_watcher_conn_Flames_Hub"
-originalIO.ensureCam = function(spectateTarget)
-    if not spectateTarget or not spectateSubject then return end
+originalIO.ensureCam = function(spectate_target)
+    if not spectate_target or not spectate_subject then return end
     if not workspace then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
     if isProperty(cam, "CameraSubject") == nil then return end
-    if cam.CameraSubject ~= spectateSubject then
-        setProperty(cam, "CameraSubject", spectateSubject)
-    end
+    if cam.CameraSubject ~= spectate_subject then setProperty(cam, "CameraSubject", spectate_subject) end
 end
 
-originalIO.hookCameraGuard = function(spectateTarget)
+originalIO.hookCameraGuard = function(spectate_target)
     if not workspace then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
@@ -2265,14 +4106,14 @@ originalIO.hookCameraGuard = function(spectateTarget)
     wait(0.25)
     if isProperty(cam, "CameraSubject") ~= nil then
         spectateConns.cam = g.FlamesLibrary.connect("spectate_cam", cam:GetPropertyChangedSignal("CameraSubject"):Connect(function()
-            if not spectateTarget or not spectateSubject then return end
+            if not spectate_target or not spectate_subject then return end
             originalIO.ensureCam()
         end))
     end
 
     if not spectateConns.camW and isProperty(workspace, "CurrentCamera") ~= nil then
         spectateConns.camW = g.FlamesLibrary.connect("spectate_camW", workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-            if not spectateTarget or not spectateSubject then return end
+            if not spectate_target or not spectate_subject then return end
             originalIO.hookCameraGuard()
             originalIO.ensureCam()
         end))
@@ -2285,7 +4126,7 @@ originalIO.captureIO = function(name)
     if type(fn) ~= "function" then fn = _G[name] end
     if type(fn) == "function" then originalIO[name] = fn end
 end
-wait(0.1)
+wait(0.15)
 if not originalIO.__captured then
     originalIO.__captured = true
     originalIO.captureIO('readfile')
@@ -2300,12 +4141,8 @@ if not originalIO.__captured then
 end
 
 originalIO.pathVariants = function(path)
-    if type(path) ~= "string" then
-        return { path }
-    end
-    if path:match('^[%w_]+://') then
-        return { path }
-    end
+    if type(path) ~= "string" then return { path } end
+    if path:match('^[%w_]+://') then return { path } end
     local variants, seen = {}, {}
     local function add(value)
         if type(value) == "string" and value ~= "" and not seen[value] then
@@ -7287,41 +9124,39 @@ g.name_changer_premium = g.name_changer_premium or function(state)
 end
 
 g.spectate_plr_without_distance_limits = g.spectate_plr_without_distance_limits or function(plr)
-    function spectatePlayer(targetPlayer)
-        if not targetPlayer then return end
-
-        spectateTarget = targetPlayer
-        spectateSubject = nil
+    function spectatePlayer(target_player)
+        if not target_player then return end
+        spectate_target = target_player
+        spectate_subject = nil
         originalIO.disconnectSpectateConns()
-
         local function setCamToCharacter(character)
-            if spectateTarget ~= targetPlayer or not character then return end
+            if spectate_target ~= target_player or not character then return end
             local hum = getPlrHum(character) or getHum(character, 5)
             local subj = hum or getRoot(character)
             if not subj then return end
-            spectateSubject = subj
+            spectate_subject = subj
             originalIO.ensureCam()
             originalIO.hookCameraGuard()
         end
 
-        setCamToCharacter(targetPlayer.Character)
-        spectateConns.char = g.FlamesLibrary.connect("spectate_char", targetPlayer.CharacterAdded:Connect(function(character)
-            if spectateTarget ~= targetPlayer then return end
+        setCamToCharacter(target_player.Character)
+        spectateConns.char = g.FlamesLibrary.connect("spectate_char", target_player.CharacterAdded:Connect(function(character)
+            if spectate_target ~= target_player then return end
             setCamToCharacter(character)
         end))
 
         spectateConns.leave = NAlib.connect("spectate_leave", Players.PlayerRemoving:Connect(function(player)
-            if player == targetPlayer and spectateTarget == targetPlayer then
+            if player == target_player and spectate_target == target_player then
                 cleanup(true)
                 DebugNotif("Player left - camera reset")
             end
         end))
 
         spectateConns.loop = NAlib.connect("spectate_loop", RunService.RenderStepped:Connect(function()
-            if spectateTarget ~= targetPlayer then return end
-            local char = targetPlayer.Character
+            if spectate_target ~= target_player then return end
+            local char = target_player.Character
             if not char or not char.Parent then return end
-            if not spectateSubject or spectateSubject.Parent ~= char then
+            if not spectate_subject or spectate_subject.Parent ~= char then
                 setCamToCharacter(char)
             else
                 originalIO.ensureCam()
@@ -7335,13 +9170,8 @@ end
 local View_Outfit_State_Toggle = g.LocalPlayer:GetAttribute("hide_view_outfit") or true
 g.anti_outfit_copier = function(toggle)
     if toggle == true then
-        if g.anti_outfit_stealer then
-            return notify("Error", "Anti Outfit Stealer is already enabled!", 5)
-        end
-        if g.FlamesLibrary.is_alive("AntiFitStealerConn") then
-            return notify("Error", "Anti Outfit Stealer is already enabled! [connection]", 5)
-        end
-
+        if g.anti_outfit_stealer then return notify("Error", "Anti Outfit Stealer is already enabled!", 5) end
+        if g.FlamesLibrary.is_alive("AntiFitStealerConn") then return notify("Error", "Anti Outfit Stealer is already enabled! [connection].", 5) end
         g.notify("Success", "Flames Hub | Anti Outfit Stealer is now active.", 7)
         local lib = getgenv().FlamesLibrary
         g.ToggleAntiFit_Stealer = g.ToggleAntiFit_Stealer or function(state)
@@ -7364,7 +9194,6 @@ g.anti_outfit_copier = function(toggle)
                 local now = tick()
                 if now - last_check < 0.4 then return end
                 last_check = now
-
                 local hide_outfit_toggle = g.LocalPlayer:GetAttribute("hide_view_outfit")
                 if hide_outfit_toggle and hide_outfit_toggle == false then
                     g.Send("hide_view_outfit", true)
@@ -7383,10 +9212,7 @@ g.anti_outfit_copier = function(toggle)
         fw(0.1)
         g.ToggleAntiFit_Stealer(true)
     elseif toggle == false then
-        if not g.anti_outfit_stealer then
-            return notify("Error", "Anti Outfit Copier is not enabled!", 5)
-        end
-
+        if not g.anti_outfit_stealer then return notify("Error", "Anti Outfit Copier is not enabled!", 5) end
         g.anti_outfit_stealer = false
         g.FlamesLibrary.disconnect("AntiFitStealerConn")
         g.ToggleAntiFit_Stealer(false)
@@ -7401,73 +9227,48 @@ local get_proto_func = getproto or debug.getproto or getprotos
 g.hook_meta_main = g.hook_meta_main or function(obj, metamethod, func)
     if not getrawmetatable then return end
     local old = getrawmetatable and getrawmetatable(obj)
-
     if hookfunction then
         return hookfunction(old[metamethod],func)
     else
         local oldmetamethod = old[metamethod]
-        if makewriteable then
-            makewriteable(old)
-        end
+        if makewriteable then makewriteable(old) end
         old[metamethod] = func
-        if makereadonly then
-            makereadonly(old)
-        end
+        if makereadonly then makereadonly(old) end
         return oldmetamethod
     end
 end
 
 g.find_messages_modulescript = g.find_messages_modulescript or function()
-    if g.Messages_Module_Found_Loc then
-        return g.Messages_Module_Found_Loc
-    end
-
+    if g.Messages_Module_Found_Loc then return g.Messages_Module_Found_Loc end
     local reps = g.ReplicatedStorage or safe_wrapper("ReplicatedStorage")
     if not reps then return nil end
     local found = reps:FindFirstChild("Messages", true)
-    if found and found:IsA("ModuleScript") then
-        g.Messages_Module_Found_Loc = found
-    end
-
+    if found and found:IsA("ModuleScript") then g.Messages_Module_Found_Loc = found end
     return g.Messages_Module_Found_Loc
 end
 
 g.find_UI_modulescript = g.find_UI_modulescript or function()
-    if g.UI_Module_Main then
-        return g.UI_Module_Main
-    end
-
+    if g.UI_Module_Main then return g.UI_Module_Main end
     local reps = g.ReplicatedStorage or safe_wrapper("ReplicatedStorage")
     if not reps then return nil end
     local found = reps:FindFirstChild("UI", true)
-    if found and found:IsA("ModuleScript") then
-        g.UI_Module_Main = found
-    end
-
+    if found and found:IsA("ModuleScript") then g.UI_Module_Main = found end
     return g.UI_Module_Main
 end
 
 g.find_RateLimiter_modulescript = g.find_RateLimiter_modulescript or function()
-    if g.RateLimiter_Module_Main then
-        return g.RateLimiter_Module_Main
-    end
-
+    if g.RateLimiter_Module_Main then return g.RateLimiter_Module_Main end
     local reps = g.ReplicatedStorage or safe_wrapper("ReplicatedStorage")
     if not reps then return nil end
     local found = reps:FindFirstChild("RateLimiter", true)
-    if found and found:IsA("ModuleScript") then
-        g.RateLimiter_Module_Main = found
-    end
-
+    if found and found:IsA("ModuleScript") then g.RateLimiter_Module_Main = found end
     return g.RateLimiter_Module_Main
 end
 
 if not g.RateLimiter_Bypass_Applied then
     if get_proto_func and upvalues_func_main and require then
         local ok, err = pcall(function()
-            local message_module = g.Messages_Module_Found_Loc
-                and require(g.Messages_Module_Found_Loc)
-                or require(find_messages_modulescript())
+            local message_module = g.Messages_Module_Found_Loc and require(g.Messages_Module_Found_Loc) or require(find_messages_modulescript())
             local rate_limiter = upvalues_func_main(get_proto_func(message_module.loaded, 4, true)[1], 5)
             if typeof(rate_limiter) == "table" and rate_limiter.is_limited then
                 rate_limiter.is_limited = function() return false end
@@ -7484,35 +9285,26 @@ end
 g.spam_sign_text = g.spam_sign_text or function(toggle)
     local Character = g.Character
     local PlacedModels = Workspace:WaitForChild("PlacedModels")
-    local random_words = {
-        "yo","wsg bro","aye","lit","fire"
-    }
-    local function find_tool_partial(toolName)
-        if not toolName then return nil end
-        local query = toolName:lower()
-
+    local random_words = {"yo","wsg bro","aye","lit","fire"}
+    local function find_tool_partial(tool_name)
+        if not tool_name then return nil end
+        local query = tool_name:lower()
         for _, v in ipairs(PlacedModels:GetChildren()) do
             if v:IsA("Model") and v.Name:lower() == query then
-                local ownerAttr = v:GetAttribute("owner_id")
-                if ownerAttr and tostring(ownerAttr) == tostring(LocalPlayer.UserId) then
-                return v
+                local owner_attr = v:GetAttribute("owner_id")
+                if owner_attr and tostring(owner_attr) == tostring(LocalPlayer.UserId) then
+                    return v
                 end
             end
         end
 
-        for _, v in ipairs(Character:GetChildren()) do
-            if v.Name:lower() == query then
-                return v
-            end
-        end
-
+        for _, v in ipairs(Character:GetChildren()) do if v.Name:lower() == query then return v end end
         return nil
     end
 
     if toggle == true then
         if g.ToolChanger_FE then return notify("Warning", "Sign Spammer is already enabled!", 5) end
         g.ToolChanger_FE = true
-
         g.Sign_ChangeText_Fast_Loop_Task = task.spawn(function()
             while g.ToolChanger_FE == true do
                 local tool = find_tool_partial("sign")
@@ -7567,11 +9359,8 @@ g.ToggleAutoLock = g.AutoLockConnection or function(state)
     g.AutoLockConnection = g.RunService.Heartbeat:Connect(function()
         if tick() - (g._lastLockCheck or 0) < 1 then return end
         g._lastLockCheck = tick()
-        
         local car = get_vehicle()
-        if car and car:GetAttribute("locked") ~= true then
-            lock_vehicle(car)
-        end
+        if car and car:GetAttribute("locked") ~= true then lock_vehicle(car) end
     end)
 end
 
@@ -7617,38 +9406,24 @@ if not g.player_esp_core then
         apply_esp(plr)
         FlamesLibrary.connect("esp_char_" .. tostring(plr.UserId), plr.CharacterAdded:Connect(function(new_char)
             if plr == localplayer then return end
-            while g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled and new_char and not new_char.Parent do
-                task.wait()
-            end
+            while g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled and new_char and not new_char.Parent do task.wait() end
             apply_esp(plr)
         end))
     end
 
-    local function untrack_player(plr)
-        remove_esp(plr)
-        FlamesLibrary.disconnect("esp_char_" .. tostring(plr.UserId))
-    end
-
+    local function untrack_player(plr) remove_esp(plr) FlamesLibrary.disconnect("esp_char_" .. tostring(plr.UserId)) end
     g.enable_player_esp = function()
-        if g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled then
-            return g.notify("Warning", "Flames Hub Player ESP is already enabled.", 5)
-        end
+        if g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled then return g.notify("Warning", "Flames Hub Player ESP is already enabled.", 5) end
         g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled = true
-        for _, plr in ipairs(players:GetPlayers()) do
-            track_player(plr)
-        end
+        for _, plr in ipairs(players:GetPlayers()) do track_player(plr) end
         FlamesLibrary.connect("esp_playeradded", players.PlayerAdded:Connect(track_player))
         FlamesLibrary.connect("esp_playerremoving", players.PlayerRemoving:Connect(untrack_player))
     end
 
     g.disable_player_esp = function()
-        if not g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled then
-            return g.notify("Warning", "Flames Hub Player ESP is not enabled.", 6)
-        end
+        if not g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled then return g.notify("Warning", "Flames Hub Player ESP is not enabled.", 6) end
         g.Flames_Hub_Player_ESP_Core_Has_Been_Enabled = false
-        for plr in pairs(esp_objects) do
-            remove_esp(plr)
-        end
+        for plr in pairs(esp_objects) do remove_esp(plr) end
         FlamesLibrary.disconnect("esp_playeradded")
         FlamesLibrary.disconnect("esp_playerremoving")
     end
@@ -7662,9 +9437,7 @@ if Drawing and not g.tracer_core_initialized then
     local localplayer = g.LocalPlayer or g.Players.LocalPlayer or players.LocalPlayer
     local tracer_objects = {}
     g.tracer_esp_currently_running_flag_Flames_Hub = false
-    if g.disable_tracers and typeof(g.disable_tracers) == "function" then
-        pcall(function() g.disable_tracers() end)
-    end
+    if g.disable_tracers and typeof(g.disable_tracers) == "function" then pcall(function() g.disable_tracers() end) end
     local function remove_tracer(plr)
         if tracer_objects[plr] then
             tracer_objects[plr]:Remove()
@@ -7674,9 +9447,7 @@ if Drawing and not g.tracer_core_initialized then
 
     local function create_tracer(plr)
         if plr == localplayer then return end
-        while g.tracer_esp_currently_running_flag_Flames_Hub and not plr.Parent do
-            task.wait()
-        end
+        while g.tracer_esp_currently_running_flag_Flames_Hub and not plr.Parent do task.wait() end
         if not g.tracer_esp_currently_running_flag_Flames_Hub then return end
         local line = Drawing.new("Line")
         line.Thickness = 1
@@ -7686,10 +9457,7 @@ if Drawing and not g.tracer_core_initialized then
     end
 
     local function update_tracers()
-        if not g.tracer_esp_currently_running_flag_Flames_Hub then
-            pcall(function() g.disable_tracers() end)
-            return 
-        end
+        if not g.tracer_esp_currently_running_flag_Flames_Hub then pcall(function() g.disable_tracers() end) return end
         local view = camera.ViewportSize
         for plr, line in pairs(tracer_objects) do
             local character = plr.Character or get_char(plr, 1)
@@ -7710,26 +9478,18 @@ if Drawing and not g.tracer_core_initialized then
     end
 
     g.enable_tracers = function()
-        if g.tracer_esp_currently_running_flag_Flames_Hub then
-            return g.notify("Warning", "Tracer ESP is already enabled!", 5)
-        end
+        if g.tracer_esp_currently_running_flag_Flames_Hub then return g.notify("Warning", "Tracer ESP is already enabled!", 5) end
         g.tracer_esp_currently_running_flag_Flames_Hub = true
-        for _, plr in ipairs(players:GetPlayers()) do
-            create_tracer(plr)
-        end
+        for _, plr in ipairs(players:GetPlayers()) do create_tracer(plr) end
         FlamesLibrary.connect("tracer_render", runservice.RenderStepped:Connect(update_tracers))
         FlamesLibrary.connect("tracer_playeradded", players.PlayerAdded:Connect(create_tracer))
         FlamesLibrary.connect("tracer_playerremoving", players.PlayerRemoving:Connect(remove_tracer))
     end
 
     g.disable_tracers = function()
-        if not g.tracer_esp_currently_running_flag_Flames_Hub then
-            return g.notify("Warning", "Tracer ESP is not enabled!", 5)
-        end
+        if not g.tracer_esp_currently_running_flag_Flames_Hub then return g.notify("Warning", "Tracer ESP is not enabled!", 5) end
         g.tracer_esp_currently_running_flag_Flames_Hub = false
-        for plr in pairs(tracer_objects) do
-            remove_tracer(plr)
-        end
+        for plr in pairs(tracer_objects) do remove_tracer(plr) end
         FlamesLibrary.disconnect("tracer_render")
         FlamesLibrary.disconnect("tracer_playeradded")
         FlamesLibrary.disconnect("tracer_playerremoving")
@@ -7756,24 +9516,16 @@ g.WalkFlingConnections = g.WalkFlingConnections or {}
 g.TouchingWhitelisted = g.TouchingWhitelisted or {}
 g.AddToWalkFlingWhitelist = g.AddToWalkFlingWhitelist or function(user)
     local userid = g.ToUserId(user)
-    if not userid then
-        return notify("Warning", "That player is invalid or has left the game.", 5)
-    end
-    if g.WalkFlingWhitelist[userid] then
-        return notify("Warning", "That player is already in the WalkFling Whitelist.", 5)
-    end
+    if not userid then return notify("Warning", "That player is invalid or has left the game.", 5) end
+    if g.WalkFlingWhitelist[userid] then return notify("Warning", "That player is already in the WalkFling Whitelist.", 5) end
     g.WalkFlingWhitelist[userid] = true
     return notify("Success", "Added to WalkFling Whitelist.", 5)
 end
 
 g.RemoveFromWalkFlingWhitelist = g.RemoveFromWalkFlingWhitelist or function(user)
     local userid = g.ToUserId(user)
-    if not userid then
-        return notify("Warning", "That player is invalid or has left the game.", 5)
-    end
-    if not g.WalkFlingWhitelist[userid] then
-        return notify("Warning", "That player is not in the WalkFling Whitelist.", 5)
-    end
+    if not userid then return notify("Warning", "That player is invalid or has left the game.", 5) end
+    if not g.WalkFlingWhitelist[userid] then return notify("Warning", "That player is not in the WalkFling Whitelist.", 5) end
     g.WalkFlingWhitelist[userid] = nil
     return notify("Success", "Removed from WalkFling Whitelist.", 5)
 end
@@ -7784,10 +9536,7 @@ g.is_whitelisted = g.is_whitelisted or function(plr)
 end
 
 g.stop_walkfling = g.stop_walkfling or function()
-    if not g.walkflinging then
-        return notify("Error", "Flames Hub | WalkFling-V3.5 is not enabled.", 5)
-    end
-
+    if not g.walkflinging then return notify("Error", "Flames Hub | WalkFling-V3.5 is not enabled.", 5) end
     g.walkflinging = false
     g.TouchingWhitelisted = {}
     g.FlamesLibrary.disconnect("walkflinger")
@@ -7802,19 +9551,12 @@ g.stop_walkfling = g.stop_walkfling or function()
     local root = g.HumanoidRootPart
     if root then root.Velocity = Vector3.zero end
     local hum = g.Humanoid or get_human(LocalPlayer or game.Players.LocalPlayer) or g.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.PlatformStand = false
-        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-
+    if hum then hum.PlatformStand = false hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
     g.notify("Success", "Flames Hub | WalkFling-V3.5 has been stopped/disabled.", 5)
 end
 
 g.start_walkfling = g.start_walkfling or function()
-    if g.walkflinging then
-        return notify("Warning", "Flames Hub | WalkFling-V3.5 is already enabled!", 5)
-    end
-
+    if g.walkflinging then return notify("Warning", "Flames Hub | WalkFling-V3.5 is already enabled!", 5) end
     g.walkflinging = true
     g.TouchingWhitelisted = {}
     if not g.Noclip_Enabled then g.Toggleable_Noclip(true) end
@@ -7824,16 +9566,14 @@ g.start_walkfling = g.start_walkfling or function()
         for _, conn in pairs(g.WalkFlingConnections) do conn:Disconnect() end
         g.WalkFlingConnections = {}
         g.TouchingWhitelisted = {}
-
         for _, part in ipairs(character:GetChildren()) do
             if part:IsA("BasePart") then
-                local touchConn = part.Touched:Connect(function(hit)
+                local touch_conn = part.Touched:Connect(function(hit)
                     if not g.walkflinging then return end
                     local hit_char = hit.Parent
                     while hit_char and not Players:GetPlayerFromCharacter(hit_char) and hit_char.Parent ~= workspace do hit_char = hit_char.Parent end
                     local hit_player = Players:GetPlayerFromCharacter(hit_char)
                     if not hit_player or hit_player == lp then return end
-
                     if g.is_whitelisted(hit_player) then
                         g.TouchingWhitelisted[hit_player.UserId] = true
                         return
@@ -7852,36 +9592,26 @@ g.start_walkfling = g.start_walkfling or function()
                     if hit_root then hit_root.Velocity = v * power + Vector3.new(0, 0.1, 0) end
                 end)
 
-                local untouchConn = part.TouchEnded:Connect(function(hit)
+                local untouch_conn = part.TouchEnded:Connect(function(hit)
                     local hit_char = hit.Parent
-                    while hit_char and not Players:GetPlayerFromCharacter(hit_char) and hit_char.Parent ~= workspace do
-                        hit_char = hit_char.Parent
-                    end
+                    while hit_char and not Players:GetPlayerFromCharacter(hit_char) and hit_char.Parent ~= workspace do hit_char = hit_char.Parent end
                     local hit_player = Players:GetPlayerFromCharacter(hit_char)
-                    if hit_player and g.is_whitelisted(hit_player) then
-                        g.TouchingWhitelisted[hit_player.UserId] = nil
-                    end
+                    if hit_player and g.is_whitelisted(hit_player) then g.TouchingWhitelisted[hit_player.UserId] = nil end
                 end)
-
-                table.insert(g.WalkFlingConnections, touchConn)
-                table.insert(g.WalkFlingConnections, untouchConn)
+                table.insert(g.WalkFlingConnections, touch_conn)
+                table.insert(g.WalkFlingConnections, untouch_conn)
             end
         end
     end
 
-    local char = g.Character or get_char(lp, 10)
+    local char = g.Character or get_char(lp, 5)
     if char then connect_touch_fling(char) end
     if g.WalkFlingRespawnConn then
         g.WalkFlingRespawnConn:Disconnect()
         g.WalkFlingRespawnConn = nil
     end
     wait(0.25)
-    g.WalkFlingRespawnConn = lp.CharacterAdded:Connect(function(new_char)
-        if g.walkflinging then
-            connect_touch_fling(new_char)
-        end
-    end)
-
+    g.WalkFlingRespawnConn = lp.CharacterAdded:Connect(function(new_char) if g.walkflinging then connect_touch_fling(new_char) end end)
     g.FlamesLibrary.disconnect("walkflinger")
     g.FlamesLibrary.connect("walkflinger", RunService.Heartbeat:Connect(function()
         if not g.walkflinging then return end
@@ -7908,46 +9638,22 @@ g.getcharsize = g.getcharsize or function()
     return h,w
 end
 
-g.autospinspeed = g.autospinspeed or function(base)
-    local h,w = getcharsize()
-    return base / h
-end
-
+g.autospinspeed = g.autospinspeed or function(base) local h,w = getcharsize() return base / h end
 g.change_spin_speed = g.change_spin_speed or function(speed)
     if g.walkflinging then return notify("Error", "Turn off walkfling first for this to work properly.", 10) end
-    for _, v in ipairs(g.HumanoidRootPart:GetChildren()) do
-        if v.Name == "FlamesHub_Spin" then
-            v.AngularVelocity = Vector3.new(0, speed, 0)
-        end
-    end
+    for _, v in ipairs(g.HumanoidRootPart:GetChildren()) do if v.Name == "FlamesHub_Spin" then v.AngularVelocity = Vector3.new(0, speed, 0) end end
 end
 
 g.LockHouse_LastState = g.LockHouse_LastState or {}
 g.LockHomeLoop = g.LockHomeLoop or false
 g.get_plot_of_player = g.get_plot_of_player or function(player)
-    if not player then 
-        return nil, "No player provided" 
-    end
-
+    if not player then return nil, "No player provided" end
     local plotList = PlotMarker and PlotMarker.class and PlotMarker.class.objects
-    if type(plotList) ~= "table" then
-        return nil, "Plots not available"
-    end
-
+    if type(plotList) ~= "table" then return nil, "Plots not available" end
     for _, plot in pairs(plotList) do
-        if plot 
-        and plot.states 
-        and plot.states.owner
-        and typeof(plot.states.owner.get) == "function"
-        and plot.instance
-        then
-            local ok, owner = pcall(function()
-                return plot.states.owner.get()
-            end)
-
-            if ok and owner == player then
-                return plot.instance, plot
-            end
+        if plot and plot.states and plot.states.owner and typeof(plot.states.owner.get) == "function" and plot.instance then
+            local ok, owner = pcall(function() return plot.states.owner.get() end)
+            if ok and owner == player then  return plot.instance, plot end
         end
     end
 
@@ -7962,25 +9668,10 @@ end
 
 g.is_home_locked = g.is_home_locked or function(player)
     local plotInstance, plotObject = get_plot_of_player(player)
-    if not plotObject then
-        return nil, "Player has no plot"
-    end
-
-    if not plotObject.states 
-    or not plotObject.states.locked 
-    or typeof(plotObject.states.locked.get) ~= "function"
-    then
-        return nil, "Locked state unavailable"
-    end
-
-    local ok, locked = pcall(function()
-        return plotObject.states.locked.get()
-    end)
-
-    if not ok then
-        return nil, "Failed to read lock state"
-    end
-
+    if not plotObject then return nil, "Player has no plot" end
+    if not plotObject.states or not plotObject.states.locked or typeof(plotObject.states.locked.get) ~= "function" then return nil, "Locked state unavailable" end
+    local ok, locked = pcall(function() return plotObject.states.locked.get() end)
+    if not ok then return nil, "Failed to read lock state" end
     return locked
 end
 
@@ -7989,10 +9680,7 @@ g.LockHomeLoop = g.LockHomeLoop or false
 g.LockHomeToken = g.LockHomeToken or 0
 g.keep_home_locked = g.keep_home_locked or function(toggle)
     if toggle then
-        if g.LockHomeLoop then
-            return notify("Warning", "Flames Hub | Auto Lock Home is already enabled.", 5)
-        end
-
+        if g.LockHomeLoop then return notify("Warning", "Flames Hub | Auto Lock Home is already enabled.", 5) end
         g.LockHomeLoop = true
         g.LockHomeToken = (g.LockHomeToken or 0) + 1
         local myToken = g.LockHomeToken
@@ -8000,20 +9688,14 @@ g.keep_home_locked = g.keep_home_locked or function(toggle)
         task.spawn(function()
             while g.LockHomeLoop and myToken == g.LockHomeToken do
                 fw(0.2)
-                local plotList = PlotMarker and PlotMarker.class and PlotMarker.class.objects
-                if plotList then
-                    for _, plot in pairs(plotList) do
+                local plot_list = PlotMarker and PlotMarker.class and PlotMarker.class.objects
+                if plot_list then
+                    for _, plot in pairs(plot_list) do
                         if myToken ~= g.LockHomeToken then return end
-                        local okOwner, owner = pcall(function()
-                            return plot.states.owner.get()
-                        end)
-
+                        local okOwner, owner = pcall(function() return plot.states.owner.get() end)
                         if okOwner and owner == g.LocalPlayer then
                             local id = plot.instance:GetDebugId()
-                            if g.LockHouse_LastState[id] == nil then
-                                g.LockHouse_LastState[id] = plot.states.locked.get()
-                            end
-
+                            if g.LockHouse_LastState[id] == nil then g.LockHouse_LastState[id] = plot.states.locked.get() end
                             local locked = plot.states.locked.get()
                             local last = g.LockHouse_LastState[id]
                             if locked == false and last == true then
@@ -8028,10 +9710,7 @@ g.keep_home_locked = g.keep_home_locked or function(toggle)
             end
         end)
     else
-        if not g.LockHomeLoop then
-            return notify("Warning", "Flames Hub | Auto Lock Home is not enabled.", 5)
-        end
-
+        if not g.LockHomeLoop then return notify("Warning", "Flames Hub | Auto Lock Home is not enabled.", 5) end
         g.LockHomeLoop = false
         g.LockHomeToken = (g.LockHomeToken or 0) + 1
         table.clear(g.LockHouse_LastState)
@@ -8040,19 +9719,11 @@ g.keep_home_locked = g.keep_home_locked or function(toggle)
 end
 
 g.spin_plr = g.spin_plr or function(toggle, speed)
-    local hrp = g.HumanoidRootPart or get_root(g.LocalPlayer)
-
+    local hrp = g.HumanoidRootPart or get_root(g.LocalPlayer, 5)
     if toggle == true then
-        if g.already_spinning_localplr then
-            return notify("Warning", "You are already spinning, changing speed.", 5)
-        end
-        if typeof(speed) ~= "number" then
-            return notify("Error", "That wasn't a number! Input a number.", 5)
-        end
-        if g.walkflinging then
-            return notify("Error", "Turn off walkfling first for this to work properly.", 10)
-        end
-
+        if g.already_spinning_localplr then return notify("Warning", "You are already spinning, changing speed.", 5) end
+        if typeof(speed) ~= "number" then return notify("Error", "That wasn't a number! Input a number.", 5) end
+        if g.walkflinging then return notify("Error", "Turn off walkfling first for this to work properly.", 10) end
         g.already_spinning_localplr = true
         for _, v in pairs(hrp:GetChildren()) do
             if v.Name == "FlamesHub_Spin" then
@@ -8066,10 +9737,7 @@ g.spin_plr = g.spin_plr or function(toggle, speed)
         Spin.AngularVelocity = Vector3.new(0, autospinspeed(speed), 0)
         Spin.Parent = hrp
     elseif toggle == false then
-        if not g.already_spinning_localplr then
-            return notify("Error", "You are not using Spin.", 5)
-        end
-
+        if not g.already_spinning_localplr then return notify("Error", "You are not using Spin.", 5) end
         for _, v in ipairs(hrp:GetChildren()) do
             if v:IsA("BodyAngularVelocity") and v.Name == "FlamesHub_Spin" then
                 v:Destroy()
@@ -8094,9 +9762,7 @@ g.set_orbit_speed = g.set_orbit_speed or function(new_speed)
 end
 
 g.stop_orbit = g.stop_orbit or function()
-    if not g.Is_Orbiting then
-        return g.notify("Warning", "You're not orbiting anyone.", 5)
-    end
+    if not g.Is_Orbiting then return g.notify("Warning", "You're not orbiting anyone.", 5) end
     for _, conn in pairs(g.OrbitConnections) do
         if typeof(conn) == "RBXScriptConnection" then
             conn:Disconnect()
@@ -8108,13 +9774,8 @@ g.stop_orbit = g.stop_orbit or function()
 end
 
 g.start_orbit_plr = g.start_orbit_plr or function(target, speed, distance)
-    if g.Is_Orbiting then
-        return notify("Warning", "Already orbiting someone!", 5)
-    end
-    if not target or not target.Character then
-        return notify("Error", "Target invalid or they're missing their Character.", 5)
-    end
-
+    if g.Is_Orbiting then return notify("Warning", "Already orbiting someone!", 5) end
+    if not target or not target.Character then return notify("Error", "Target invalid or they're missing their Character.", 5) end
     local RunService = g.RunService or cloneref and cloneref(game:GetService("RunService")) or game:GetService("RunService")
     local target_char = target.Character or g.get_char(target)
     local root = g.HumanoidRootPart or get_root(LocalPlayer)
@@ -8149,20 +9810,13 @@ g.start_orbit_plr = g.start_orbit_plr or function(target, speed, distance)
     end)
 
     g.OrbitConnections.Died = humanoid.Died:Connect(stop_orbit)
-    g.OrbitConnections.Seated = humanoid.Seated:Connect(function(isSeated)
-        if isSeated then stop_orbit() end
-    end)
-
+    g.OrbitConnections.Seated = humanoid.Seated:Connect(function(isSeated) if isSeated then stop_orbit() end end)
     notify("Success", "Started orbiting: "..tostring(target)..", with speed: "..tostring(speed)..", and with distance: "..tostring(distance), 5)
 end
 
 g.water_skie_trailer = g.water_skie_trailer or function(Bool, Vehicle)
-    if not Vehicle then
-        return notify("Warning", "You do not have a Vehicle spawned!", 5)
-    end
-
+    if not Vehicle then return notify("Warning", "You do not have a Vehicle spawned!", 5) end
     local HasTrailer = Vehicle:FindFirstChild("WaterSkies")
-
     if Bool == true then
         if HasTrailer then
             return notify("Error", "You already have the WaterSkies trailer.", 5)
@@ -8203,19 +9857,13 @@ g.EnableFly = g.EnableFly or function(state, speed, vfly)
     local hrp = g.HumanoidRootPart or char:FindFirstChild("HumanoidRootPart") or get_root(plr)
     local hum = g.Humanoid or char:FindFirstChildOfClass("Humanoid") or get_human(plr)
     local cam = workspace.CurrentCamera
-    if not hrp or not hum then
-        return g.notify("Error", "Character is not ready or Humanoid doesn't exist.", 6)
-    end
-
+    if not hrp or not hum then return g.notify("Error", "Character is not ready or Humanoid doesn't exist.", 6) end
     if not state then
         DisableFly()
         return
     end
 
-    if speed and tonumber(speed) then
-        g.FlySpeed = tonumber(speed)
-    end
-
+    if speed and tonumber(speed) then g.FlySpeed = tonumber(speed) end
     g.FlyEnabled = true
     if g.flyKeyDown then g.flyKeyDown:Disconnect() g.flyKeyDown = nil end
     if g.flyKeyUp then g.flyKeyUp:Disconnect() g.flyKeyUp = nil end
@@ -8238,17 +9886,14 @@ g.EnableFly = g.EnableFly or function(state, speed, vfly)
     BV.Parent = hrp
 
     hum.PlatformStand = true
-
     if not isMobile then
         local CONTROL = {F=0,B=0,L=0,R=0,Q=0,E=0}
         g.pcFlyConn = RunService.RenderStepped:Connect(function(dt)
             if not g.FlyEnabled then return end
             if not cam or not hrp or not hum then return end
-
             local speedNow = ((vfly and (g.VehicleFlySpeed or g.FlySpeed)) or g.FlySpeed) * 50
             local look = cam.CFrame
             local moveVec = ((look.LookVector * (CONTROL.F + CONTROL.B)) + ((look * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.Q + CONTROL.E) * 0.2, 0).p) - look.p))
-
             if moveVec.Magnitude > 0 then
                 moveVec = moveVec.Unit
                 BV.Velocity = moveVec * speedNow
@@ -8302,10 +9947,8 @@ g.EnableFly = g.EnableFly or function(state, speed, vfly)
         if not g.FlyEnabled then return end
         if not hrp or not hum or not cam then return end
         BG.CFrame = cam.CFrame
-
         local direction = controlModule:GetMoveVector()
         local speedScaled = ((vfly and (g.VehicleFlySpeed or g.FlySpeed)) or g.FlySpeed) * 50
-
         if direction.Magnitude > 0 then
             BV.Velocity = (cam.CFrame.LookVector * -direction.Z + cam.CFrame.RightVector * direction.X) * speedScaled
         else
@@ -8317,19 +9960,16 @@ g.EnableFly = g.EnableFly or function(state, speed, vfly)
 end
 
 g.DisableFly = g.DisableFly or function()
-    if not g.FlyEnabled then
-        return notify("Warning", "Fly is not enabled!", 5)
-    end
-
+    if not g.FlyEnabled then return notify("Warning", "Fly is not enabled!", 5) end
     g.FlyEnabled = false
     if g.flyKeyDown then g.flyKeyDown:Disconnect() g.flyKeyDown = nil end
     if g.flyKeyUp then g.flyKeyUp:Disconnect() g.flyKeyUp = nil end
     if g.pcFlyConn then g.pcFlyConn:Disconnect() g.pcFlyConn = nil end
     if g.mobileFlyConn then g.mobileFlyConn:Disconnect() g.mobileFlyConn = nil end
     local plr = g.LocalPlayer
-    local char = g.Character or g.get_char(plr)
-    local hrp = g.HumanoidRootPart or char:FindFirstChild("HumanoidRootPart") or get_root(plr)
-    local hum = g.Humanoid or char:FindFirstChildWhichIsA("Humanoid") or get_human(plr)
+    local char = g.Character or plr.Character or g.get_char(plr, 3)
+    local hrp = g.HumanoidRootPart or char:FindFirstChild("HumanoidRootPart") or get_root(plr, 3)
+    local hum = g.Humanoid or char:FindFirstChildWhichIsA("Humanoid") or get_human(plr, 3)
     if hrp then
         if hrp:FindFirstChild("FlyGyro") then hrp.FlyGyro:Destroy() end
         if hrp:FindFirstChild("FlyVelocity") then hrp.FlyVelocity:Destroy() end
@@ -8353,14 +9993,9 @@ end
 
 g.send_msg_phone = g.send_msg_phone or function(player, msg)
     local Core_Folder = find_core_folder()
-    if not Core_Folder then
-        return notify("Error", "Core Folder not found (patched?).", 5)
-    end
+    if not Core_Folder then return notify("Error", "Core Folder not found (patched?).", 5) end
     local Privacy = require(Core_Folder:FindFirstChild("Privacy"))
-    if not Privacy then
-        return notify("Error", "Privacy ModuleScript not found (patched?).", 5)
-    end
-
+    if not Privacy then return notify("Error", "Privacy ModuleScript not found (patched?).", 5) end
     local function get_dm_hash(id)
         local my = Players.LocalPlayer.UserId
         if not id then return nil end
@@ -8372,13 +10007,10 @@ g.send_msg_phone = g.send_msg_phone or function(player, msg)
         local targetId = target.UserId
         local hash = get_dm_hash(targetId)
         if not hash then return false end
-        local ok, res = pcall(function()
-            return Privacy.send_message("messages", hash, text)
-        end)
-
+        local ok, res = pcall(function() return Privacy.send_message("messages", hash, text) end)
         if not ok or res == false then
             g.Sending_DMs_Main_Non_Loop_Task = g.Sending_DMs_Main_Non_Loop_Task or task.spawn(function()
-                notify("Error", "Send message failed: "..tostring(res), 7)
+                notify("Error", "Send message failed: "..tostring(res), 5)
             end)
             return false
         end
@@ -8387,11 +10019,7 @@ g.send_msg_phone = g.send_msg_phone or function(player, msg)
     end
 
     local text_to_send = msg
-
-    if not text_to_send or text_to_send == "" then
-        return g.notify("Error", "Please input a valid message to send!", 5)
-    end
-
+    if not text_to_send or text_to_send == "" then return g.notify("Error", "Please input a valid message to send!", 5) end
     send_dm(player, text_to_send)
 end
 
@@ -8479,10 +10107,7 @@ local function process_message_frame(frame)
     local sender_id, hash = get_sender_id(msg_id)
     if not sender_id then return end
     local recipient_id = get_other_from_hash(hash, sender_id)
-    if recipient_id then
-        frame:SetAttribute("recipient_id", recipient_id)
-    end
-
+    if recipient_id then frame:SetAttribute("recipient_id", recipient_id) end
     local txt = frame:FindFirstChildWhichIsA("TextLabel", true)
     if not txt then return end
     if not g.chat_text_conns[txt] then
@@ -8507,20 +10132,11 @@ g.toggle_rgb_streetlights = g.toggle_rgb_streetlights or function(toggle)
     local genv = g
 
     if toggle == true then
-        if genv.RGB_Street_Lights_NightTime_Loop or genv.StreetLightRainbowConnection then
-            return genv.notify("Warning", "RGB/Rainbow StreetLights is already running!", 5)
-        end
-
+        if genv.RGB_Street_Lights_NightTime_Loop or genv.StreetLightRainbowConnection then return genv.notify("Warning", "RGB/Rainbow StreetLights is already running!", 5) end
         local Map = Workspace:FindFirstChild("Map", true)
-        if not Map then
-            return genv.notify("Error", "Map Folder not found inside of Workspace!", 6)
-        end
-
+        if not Map then return genv.notify("Error", "Map Folder not found inside of Workspace!", 6) end
         local StreetLs = Map:FindFirstChild("StreetLights", true)
-        if not StreetLs then
-            return genv.notify("Error", "StreetLights not found inside of Map Folder!", 5)
-        end
-
+        if not StreetLs then return genv.notify("Error", "StreetLights not found inside of Map Folder!", 5) end
         if typeof(genv.all_street_lights) ~= "table" then genv.all_street_lights = {} end
         if next(genv.all_street_lights) == nil then
             for _, v in ipairs(StreetLs:GetDescendants()) do
@@ -8559,239 +10175,255 @@ g.toggle_rgb_streetlights = g.toggle_rgb_streetlights or function(toggle)
 end
 
 local excluded_functions = {
-   HttpGet = true,
-   appendfile = true,
-   base64_decode = true,
-   base64_encode = true,
-   base64decode = true,
-   base64encode = true,
-   cansignalreplicate = true,
-   checkcaller = true,
-   checkclosure = true,
-   clear_teleport_queue = true,
-   cleardrawcache = true,
-   clearqueueonteleport = true,
-   clearteleportqueue = true,
-   clonefunction = true,
-   cloneref = true,
-   clonereference = true,
-   compareinstances = true,
-   consoleclear = true,
-   consolecreate = true,
-   consoledestroy = true,
-   consoleerror = true,
-   consoleinput = true,
-   consoleprint = true,
-   consolesettitle = true,
-   consolewarn = true,
-   create_comm_channel = true,
-   createrenderobj = true,
-   createrenderobject = true,
-   decompile = true,
-   delfile = true,
-   delfolder = true,
-   dofile = true,
-   dumpstring = true,
-   disable_emote_func = true,
-   filtergc = true,
-   fireclickdetector = true,
-   fireproximityprompt = true,
-   firesignal = true,
-   firetouchinterest = true,
-   get_actor_threads = true,
-   get_actors = true,
-   get_comm_channel = true,
-   get_deleted_actors = true,
-   get_hidden_gui = true,
-   get_hwid = true,
-   get_internal_parent = true,
-   get_namecall_method = true,
-   get_thread_identity = true,
-   get_user_identifier = true,
-   getactors = true,
-   getactorthreads = true,
-   getallthreads = true,
-   getbspval = true,
-   getcallbackmember = true,
-   getcallbackvalue = true,
-   getcallingscript = true,
-   getcaps = true,
-   getclosurecaps = true,
-   getconnection = true,
-   getconnections = true,
-   getconstant = true,
-   getconstants = true,
-   getcustomasset = true,
-   getdeletedactors = true,
-   getexecutorname = true,
-   getfenv = true,
-   getfflag = true,
-   getfpscap = true,
-   getfunctionhash = true,
-   getgc = true,
-   getgenv = true,
-   gethiddenprop = true,
-   gethiddenproperty = true,
-   gethui = true,
-   gethwid = true,
-   getidentity = true,
-   getinfo = true,
-   getinstances = true,
-   getinternalparent = true,
-   getloadedmodules = true,
-   getnamecallmethod = true,
-   getnilinstances = true,
-   getobjects = true,
-   getpcd = true,
-   getproto = true,
-   getprotos = true,
-   getproximitypromptduration = true,
-   getrawmetatable = true,
-   getreg = true,
-   getregistry = true,
-   getrenderproperty = true,
-   getrendersteppedlist = true,
-   getrenv = true,
-   getrunningscripts = true,
-   getsafeenv = true,
-   getscriptbytecode = true,
-   getscriptclosure = true,
-   getscriptfromthread = true,
-   getscriptfunction = true,
-   getscripthash = true,
-   getscripts = true,
-   getscriptthread = true,
-   getsenv = true,
-   getsimulationradius = true,
-   getstack = true,
-   getsynasset = true,
-   gettenv = true,
-   getthreadcontext = true,
-   getthreadidentity = true,
-   getupvalue = true,
-   getupvalues = true,
-   hookfunc = true,
-   hookfunction = true,
-   hookmetamethod = true,
-   http_request = true,
-   httpget = true,
-   identifyexecutor = true,
-   is_parallel = true,
-   is_readonly = true,
-   iscclosure = true,
-   isexecutorclosure = true,
-   isfile = true,
-   isfolder = true,
-   isfunctionhooked = true,
-   isgameactive = true,
-   islclosure = true,
-   isnetworkowner = true,
-   isnewcclosure = true,
-   isourclosure = true,
-   isourthread = true,
-   isparallel = true,
-   isrbxactive = true,
-   isreadonly = true,
-   isrenderobj = true,
-   isscriptable = true,
-   isuntouched = true,
-   isvalidlevel = true,
-   iswindowactive = true,
-   keyclick = true,
-   keypress = true,
-   keyrelease = true,
-   keytap = true,
-   listfiles = true,
-   loadfile = true,
-   loadstring = true,
-   lz4compress = true,
-   lz4decompress = true,
-   makefolder = true,
-   makereadonly = true,
-   makewritable = true,
-   messagebox = true,
-   messageboxasync = true,
-   mouse1click = true,
-   mouse1press = true,
-   mouse1release = true,
-   mouse2click = true,
-   mouse2press = true,
-   mouse2release = true,
-   mousemoveabs = true,
-   mousemoverel = true,
-   mousescroll = true,
-   newcclosure = true,
-   newlclosure = true,
-   queue_on_teleport = true,
-   queueonteleport = true,
-   rconsoleclear = true,
-   rconsolecreate = true,
-   rconsoledestroy = true,
-   rconsoleerr = true,
-   rconsoleerror = true,
-   rconsolehide = true,
-   rconsoleinfo = true,
-   rconsoleinput = true,
-   rconsolename = true,
-   rconsoleprint = true,
-   rconsolesettitle = true,
-   rconsoleshow = true,
-   rconsolewarn = true,
-   readfile = true,
-   replaceclosure = true,
-   replicatesignal = true,
-   request = true,
-   require = true,
-   restorefunc = true,
-   restorefunction = true,
-   run_on_actor = true,
-   run_on_thread = true,
-   saveinstance = true,
-   set_internal_parent = true,
-   set_namecall_method = true,
-   set_readonly = true,
-   set_thread_identity = true,
-   setcaps = true,
-   setclipboard = true,
-   setclosurecaps = true,
-   setconstant = true,
-   setfflag = true,
-   setfpscap = true,
-   sethiddenprop = true,
-   sethiddenproperty = true,
-   setidentity = true,
-   setinternalparent = true,
-   setname = true,
-   setnamecallmethod = true,
-   setproximitypromptduration = true,
-   setrawmetatable = true,
-   setrbxclipboard = true,
-   setreadonly = true,
-   setrenderproperty = true,
-   setsafeenv = true,
-   setscriptable = true,
-   setsimulationradius = true,
-   setstack = true,
-   setstackhidden = true,
-   setthreadcontext = true,
-   setthreadidentity = true,
-   setuntouched = true,
-   setupvalue = true,
-   setwindowtitle = true,
-   toclipboard = true,
-   validlevel = true,
-   writefile = true,
-   playemote = true,
-   try_load = true,
-   change_gravity_val = true,
-   execCmd = true,
-   disabled_global_value_correctly = true,
-   name_changer_premium = true,
-   Flames_Debugger_Function_Tester_GUI = true,
-   notify = true,
-   start_scan = true,
-   SetFPSCap = true,
-   low_level_executor = true
+    HttpGet = true,
+    appendfile = true,
+    base64_decode = true,
+    base64_encode = true,
+    base64decode = true,
+    base64encode = true,
+    cansignalreplicate = true,
+    checkcaller = true,
+    checkclosure = true,
+    clear_teleport_queue = true,
+    cleardrawcache = true,
+    clearqueueonteleport = true,
+    clearteleportqueue = true,
+    clonefunction = true,
+    cloneref = true,
+    clonereference = true,
+    compareinstances = true,
+    consoleclear = true,
+    consolecreate = true,
+    consoledestroy = true,
+    consoleerror = true,
+    consoleinput = true,
+    consoleprint = true,
+    consolesettitle = true,
+    consolewarn = true,
+    create_comm_channel = true,
+    createrenderobj = true,
+    createrenderobject = true,
+    decompile = true,
+    delfile = true,
+    delfolder = true,
+    dofile = true,
+    dumpstring = true,
+    disable_emote_func = true,
+    filtergc = true,
+    fireclickdetector = true,
+    fireproximityprompt = true,
+    firesignal = true,
+    firetouchinterest = true,
+    get_actor_threads = true,
+    get_actors = true,
+    get_comm_channel = true,
+    get_deleted_actors = true,
+    get_hidden_gui = true,
+    get_hwid = true,
+    get_internal_parent = true,
+    get_namecall_method = true,
+    get_thread_identity = true,
+    get_user_identifier = true,
+    getactors = true,
+    getactorthreads = true,
+    getallthreads = true,
+    getbspval = true,
+    getcallbackmember = true,
+    getcallbackvalue = true,
+    getcallingscript = true,
+    getcaps = true,
+    getclosurecaps = true,
+    getconnection = true,
+    getconnections = true,
+    getconstant = true,
+    getconstants = true,
+    getcustomasset = true,
+    getdeletedactors = true,
+    getexecutorname = true,
+    getfenv = true,
+    getfflag = true,
+    getfpscap = true,
+    getfunctionhash = true,
+    getgc = true,
+    getgenv = true,
+    gethiddenprop = true,
+    gethiddenproperty = true,
+    gethui = true,
+    gethwid = true,
+    getidentity = true,
+    getinfo = true,
+    getinstances = true,
+    getinternalparent = true,
+    getloadedmodules = true,
+    getnamecallmethod = true,
+    getnilinstances = true,
+    getobjects = true,
+    getpcd = true,
+    getproto = true,
+    getprotos = true,
+    getproximitypromptduration = true,
+    getrawmetatable = true,
+    getreg = true,
+    getregistry = true,
+    getrenderproperty = true,
+    getrendersteppedlist = true,
+    getrenv = true,
+    getrunningscripts = true,
+    getsafeenv = true,
+    getscriptbytecode = true,
+    getscriptclosure = true,
+    getscriptfromthread = true,
+    getscriptfunction = true,
+    getscripthash = true,
+    getscripts = true,
+    getscriptthread = true,
+    getsenv = true,
+    getsimulationradius = true,
+    getstack = true,
+    getsynasset = true,
+    gettenv = true,
+    getthreadcontext = true,
+    getthreadidentity = true,
+    getupvalue = true,
+    getupvalues = true,
+    hookfunc = true,
+    hookfunction = true,
+    hookmetamethod = true,
+    http_request = true,
+    httpget = true,
+    identifyexecutor = true,
+    is_parallel = true,
+    is_readonly = true,
+    iscclosure = true,
+    isexecutorclosure = true,
+    isfile = true,
+    isfolder = true,
+    isfunctionhooked = true,
+    isgameactive = true,
+    islclosure = true,
+    isnetworkowner = true,
+    isnewcclosure = true,
+    isourclosure = true,
+    isourthread = true,
+    isparallel = true,
+    isrbxactive = true,
+    isreadonly = true,
+    isrenderobj = true,
+    isscriptable = true,
+    isuntouched = true,
+    isvalidlevel = true,
+    iswindowactive = true,
+    keyclick = true,
+    keypress = true,
+    keyrelease = true,
+    keytap = true,
+    listfiles = true,
+    loadfile = true,
+    loadstring = true,
+    lz4compress = true,
+    lz4decompress = true,
+    makefolder = true,
+    makereadonly = true,
+    makewritable = true,
+    messagebox = true,
+    messageboxasync = true,
+    mouse1click = true,
+    mouse1press = true,
+    mouse1release = true,
+    mouse2click = true,
+    mouse2press = true,
+    mouse2release = true,
+    mousemoveabs = true,
+    mousemoverel = true,
+    mousescroll = true,
+    newcclosure = true,
+    newlclosure = true,
+    queue_on_teleport = true,
+    queueonteleport = true,
+    rconsoleclear = true,
+    rconsolecreate = true,
+    rconsoledestroy = true,
+    rconsoleerr = true,
+    rconsoleerror = true,
+    rconsolehide = true,
+    rconsoleinfo = true,
+    rconsoleinput = true,
+    rconsolename = true,
+    rconsoleprint = true,
+    rconsolesettitle = true,
+    rconsoleshow = true,
+    rconsolewarn = true,
+    readfile = true,
+    replaceclosure = true,
+    replicatesignal = true,
+    request = true,
+    require = true,
+    restorefunc = true,
+    restorefunction = true,
+    run_on_actor = true,
+    run_on_thread = true,
+    saveinstance = true,
+    set_internal_parent = true,
+    set_namecall_method = true,
+    set_readonly = true,
+    set_thread_identity = true,
+    setcaps = true,
+    setclipboard = true,
+    setclosurecaps = true,
+    setconstant = true,
+    setfflag = true,
+    setfpscap = true,
+    sethiddenprop = true,
+    sethiddenproperty = true,
+    setidentity = true,
+    setinternalparent = true,
+    setname = true,
+    setnamecallmethod = true,
+    setproximitypromptduration = true,
+    setrawmetatable = true,
+    setrbxclipboard = true,
+    setreadonly = true,
+    setrenderproperty = true,
+    setsafeenv = true,
+    setscriptable = true,
+    setsimulationradius = true,
+    setstack = true,
+    setstackhidden = true,
+    setthreadcontext = true,
+    setthreadidentity = true,
+    setuntouched = true,
+    setupvalue = true,
+    setwindowtitle = true,
+    toclipboard = true,
+    validlevel = true,
+    writefile = true,
+    playemote = true,
+    try_load = true,
+    change_gravity_val = true,
+    execCmd = true,
+    disabled_global_value_correctly = true,
+    name_changer_premium = true,
+    Flames_Debugger_Function_Tester_GUI = true,
+    notify = true,
+    start_scan = true,
+    SetFPSCap = true,
+    low_level_executor = true,
+    getcallstack = true,
+    getfastflag = true,
+    getfastflagtype = true,
+    getfflagtype = true,
+    gethiddenproperties = true,
+    getpcdprop = true,
+    getproperties = true,
+    getsignalarguments = true,
+    getsignalargumentsinfo = true,
+    getsignalwhitelist = true,
+    getthreadcaps = true,
+    info = true,
+    makewriteable = true,
+    setfastflag = true,
+    setinfo = true,
+    dumpbytecode = true,
 }
 
 g.Flames_Debugger_Function_Tester_GUI = g.Flames_Debugger_Function_Tester_GUI or function()
@@ -11077,7 +12709,7 @@ g.setup_cmd_handler_plr = function(player)
         pcall(function() getgenv().Message_Received_Connection_Other_Players:Disconnect() end)
         getgenv().Message_Received_Connection_Other_Players = nil
     end
-    wait(0.25)
+    wait(0.5)
     getgenv().Message_Received_Connection_Other_Players = TextChatService.MessageReceived:Connect(function(chatMessage)
         local speaker = chatMessage.TextSource
         if not (speaker and speaker.Name ~= localPlayerName and g.player_admins[speaker.Name]) then return end
@@ -11975,7 +13607,7 @@ g.annoyance_GUI = function()
         PlayerList.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
     end
 
-    local function refreshPlayerList()
+    local function refresh_player_list()
         for _, child in ipairs(PlayerList:GetChildren()) do
             if child:IsA("Frame") then
                 child:Destroy()
@@ -11988,11 +13620,11 @@ g.annoyance_GUI = function()
 
     if not g.RefreshPlayer_ListAdded_Conn then
         g.RefreshPlayer_ListAdded_Conn = true
-        Players.PlayerAdded:Connect(refreshPlayerList)
-        Players.PlayerRemoving:Connect(refreshPlayerList)
+        Players.PlayerAdded:Connect(refresh_player_list)
+        Players.PlayerRemoving:Connect(refresh_player_list)
     end
 
-    refreshPlayerList()
+    refresh_player_list()
 end
 
 local Hum = g.Humanoid or g.Character and g.Character:FindFirstChildOfClass("Humanoid") or get_human(LocalPlayer or game.Players.LocalPlayer, 10)
@@ -12329,7 +13961,6 @@ g.set_hum_vehicle_speed = g.set_hum_vehicle_speed or function(speed)
 end
 
 update_plot_areas()
-
 if CoreGui:FindFirstChild("TemporaryBanner_GUI") then
     pcall(function()
         if g.camConn then
@@ -12643,6 +14274,18 @@ Callback = function()
     end
 end})
 
+g.create_ui_element("Button", Home_Section, {
+Name = "Open Mini-Games GUI (Fun)",
+Callback = function()
+    g.open_minigame_menu()
+end})
+
+g.create_ui_element("Button", Home_Section, {
+Name = "Destroy GUI",
+Callback = function()
+    if Atlas then Atlas:Destroy() end
+end})
+
 g.create_ui_element("Toggle", Home_Section, {
 Name = "Anti Hashtags (FE) BETA!",
 Default = (getgenv().FlamesLibrary.modules and getgenv().FlamesLibrary.modules.chat_filter_override.enabled) or false,
@@ -12650,12 +14293,6 @@ Flag = "Anti_Hashtags_Toggle_UI",
 Callback = function(state)
     if getgenv().FlamesLibrary.modules then getgenv().FlamesLibrary.modules.chat_filter_override:toggle(state) end
 end}, "Anti_Hashtags_Toggle_UI")
-
-g.create_ui_element("Button", Home_Section, {
-Name = "Destroy GUI",
-Callback = function()
-    if Atlas then Atlas:Destroy() end
-end})
 
 g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Job Spammer (FE)",
@@ -14787,8 +16424,9 @@ if not g.lta_updater_running then
             local remote_version = ws_get_version()
             if not remote_version or remote_version == "" then continue end
             if remote_version ~= local_version then
-                print_bytes("Local", local_version)
-                print_bytes("Remote", remote_version)
+                -- [[ Only for debugging purposes. ]] --
+                --print_bytes("Local", local_version)
+                --print_bytes("Remote", remote_version)
                 g.lta_updater_running = false
                 Notify("[UPDATE DETECTED]:\nLocal: " .. local_version .. "\nServer: " .. remote_version .. "\nReloading...", 6)
                 task.wait(0.6)
