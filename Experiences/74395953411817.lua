@@ -11,7 +11,7 @@ if not game:IsLoaded() then
    hint_instance:Destroy()
 end
 
-local Raw_Version = "V1.1.6"
+local Raw_Version = "V1.1.9"
 getgenv().Script_Version = tostring(Raw_Version).."-DreamvilleRP"
 local g = getgenv()
 if not g.GlobalEnvironmentFramework_Initialized then
@@ -1091,6 +1091,12 @@ Callback = function(state)
    all_jobs_spam(state)
 end}, "All_Jobs_Toggle")
 
+g.create_ui_element("Button", Home_Section, {
+Name = "Mini-Games GUI",
+Callback = function()
+   g.open_minigame_menu()
+end})
+
 g.create_ui_element("Toggle", LocalPlayer_Section, {
 Name = "Fly (FE)",
 Default = getgenv().FlyEnabled or false,
@@ -1388,6 +1394,18 @@ Callback = function()
    getgenv().HumanoidRootPart.CFrame = Old_CFrame_TP_Car
    g.notify("Success", "Teleported vehicle to player: " .. tostring(Goto_Player), 5)
 end}, "TP_Car_Button")
+
+g.create_ui_element("Button", Extras_Section, {
+Name = "Infinite Premium",
+Callback = function()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Infinite_Premium.lua"))()
+end})
+
+g.create_ui_element("Button", Extras_Section, {
+Name = "Infinite Yield",
+Callback = function()
+   loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+end})
 
 g.create_ui_element("Button", Extras_Section, {
 Name = "Rejoin",
