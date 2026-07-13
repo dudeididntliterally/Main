@@ -7486,7 +7486,7 @@ g.steal_car_functionality = g.steal_car_functionality or function(target_plr)
     end
 end
 
-g.save_outfits_GUI = g.save_outfits_GUI or function()
+g.save_outfits_GUI = function()
     if CoreGui:FindFirstChild("OutfitManagerUI", true) then
         return notify("Warning", "You're already running Outfits Manager!", 5)
     end
@@ -14440,6 +14440,16 @@ Flag = "Vehicle_Fly_Toggle_UI",
 Callback = function(state)
     g.toggle_vehicle_fly(state)
 end}, "Vehicle_Fly_Toggle_UI")
+
+g.create_ui_element("Slider", Vehicle_Section, {
+Name = "Vehicle Fly Speed",
+Min = 1,
+Max = 100,
+Default = getgenv().vehicle_fly_speed or false,
+Flag = "Vehicle_Fly_Speed",
+Callback = function(val)
+    if g.vehicle_fly then g.vehicle_fly_speed = val end
+end}, "Vehicle_Fly_Speed")
 
 g.create_ui_element("Toggle", Vehicle_Section, {
 Name = "Anti Car Fling (FE)",
