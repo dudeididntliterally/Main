@@ -105,6 +105,10 @@ local scriptstoload = {
     ["Dreamville RP"] = {
         id = 74395953411817,
         link = base_url .. "74395953411817.lua"
+    },
+    ["NewSmith RP"] = {
+        id = 16625391970,
+        link = base_url .. "16625391970.lua"
     }
 }
 
