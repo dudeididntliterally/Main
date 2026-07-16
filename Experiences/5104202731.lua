@@ -5,12 +5,13 @@ if not getgenv().GlobalEnvironmentFramework_Initialized then
    wait(0.1)
    getgenv().GlobalEnvironmentFramework_Initialized = true
 end
-wait(0.2)
+wait(0.25)
 local Flames_API = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Flames_Hub_API.lua"))()
 local NotifyLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Notify_Lib.lua"))()
 local Workspace, VirtualUser, HttpService, AssetService, Players, SoundService, ReplicatedStorage, Teams, vc_internal, vc_service
-local Script_Version = "V2.2.9-SWFL"
 local g = getgenv()
+local Raw_Version = "V2.2.9"
+getgenv().Script_Version = tostring(Raw_Version).."-SWFL"
 getgenv().ConstantUpdate_Checker_Live = true
 if getgenv().SouthwestFlorida_Hub_Executed then return end
 getgenv().SouthwestFlorida_Hub_Executed = true
@@ -70,11 +71,6 @@ local function find_owned_vehicles_frame()
 end
 
 if not getgenv().owned_vehicles_scrolling_frame then pcall(function() find_owned_vehicles_frame() end) end
-getgenv().notify = getgenv().notify or function(title, msg, dur)
-   local fixed_title = format_title(title)
-   NotifyLib:External_Notification(fixed_title, tostring(msg), tonumber(dur))
-end
-
 local function getExecutor()
     local name
     if identifyexecutor then
@@ -297,10 +293,7 @@ local special_colors = {
     {14.000000115484, 75.00000312924385, 130.0000074505806},
 }
 
-local function lerp(a, b, t)
-    return a + (b - a) * t
-end
-
+local function lerp(a, b, t) return a + (b - a) * t end
 local function generate_steps(from, to, steps)
     local out = {}
     for i = 0, steps do
@@ -315,7 +308,6 @@ local function generate_steps(from, to, steps)
 end
 
 getgenv().free_colors = getgenv().free_colors or {}
-
 for i = 1, #special_colors do
     local a = special_colors[i]
     local b = special_colors[(i % #special_colors) + 1]
@@ -433,11 +425,11 @@ local SpawnCar = find_RE('SpawnCar')
 local Settings_Remote = find_RE("settings")
 local Song_Control_Event = find_RE("songcontrol")
 local LocalPlayer = g.LocalPlayer or game.Players.LocalPlayer
-local Character = get_char(LocalPlayer)
-local Humanoid = get_human(LocalPlayer)
-local Head = get_head(LocalPlayer)
-local HumanoidRootPart = get_root(LocalPlayer)
-local PlayerGui = g.PlayerGui or Flames_API.PlayerGui
+local Character = g.Character or LocalPlayer.Character or g.get_char(LocalPlayer, 10)
+local Humanoid = g.Humanoid or g.Character and g.Character:FindFirstChildWhichIsA("Humanoid") or g.get_human(LocalPlayer, 10)
+local Head = g.Head or g.Character and g.Character:FindFirstChild("Head") or g.get_head(LocalPlayer, 10)
+local HumanoidRootPart = g.HumanoidRootPart or g.Character and g.Character:FindFirstChild("HumanoidRootPart") or g.get_root(LocalPlayer, 10)
+local PlayerGui = g.PlayerGui or LocalPlayer:FindFirstChildOfClass("PlayerGui") or LocalPlayer:FindFirstChildWhichIsA("PlayerGui")
 local PlayerScripts = LocalPlayer:FindFirstChildOfClass('PlayerScripts') or LocalPlayer:WaitForChild("PlayerScripts", 5)
 local GC = getconnections or get_signal_cons
 get_or_set("SoundService", g.SoundService or cloneref and cloneref(game:GetService("SoundService")) or game:GetService("SoundService"))
@@ -2212,12 +2204,9 @@ end,})
 getgenv().Infinite_Yield_Premium = Tab5:CreateButton({
 Name = "Infinite Yield Premium",
 Callback = function()
-    if getgenv().GET_LOADED_IY then
-        return 
+    if getgenv().GET_LOADED_IY then return 
     end
-    if getgenv().IY_LOADED then
-        return getgenv().notify("Error", "You already have Infinite Yield (regular) running, you cannot run this.", 10)
-    end
+    if getgenv().IY_LOADED then return getgenv().notify("Error", "You already have Infinite Yield (regular) running, you cannot run this.", 10) end
 
     loadstring(game:HttpGet('https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Infinite_Premium.lua', true))()
 end,})
@@ -2244,90 +2233,103 @@ if LocalPlayer.CameraMaxZoomDistance <= 99999 then
     end
 end
 
-function Notify(message, duration)
-    local CoreGui = CoreGui or cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
-    local TweenService = TweenService or SafeGet("TweenService") or safe_wrapper("TweenService") or cloneref and cloneref(game:GetService("TweenService")) or game:GetService("TweenService")
+local function clean(s) return s:gsub("[%c%z%s]", ""):gsub("[^\32-\126]", "") end
+local script_url = "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Southwest_Florida_BETA.lua"
+local version_url = "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Script_Versions_JSON.json"
+local function swfl_get_version()
+    local http_req = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
+    if not http_req then return nil end
+    local ok, result = pcall(function()
+        return http_req({
+            Url = version_url .. "?cache=" .. tostring(os.clock()),
+            Method = "GET",
+            Headers = { ["Content-Type"] = "application/json" }
+        })
+    end)
 
-    local NotificationGui = Instance.new("ScreenGui")
-    NotificationGui.Name = "CustomErrorGui"
-    NotificationGui.ResetOnSpawn = false
-    NotificationGui.Parent = CoreGui
-    duration = duration or 5
+    if not ok or not result or result.StatusCode ~= 200 then return nil end
+    local ok2, data = pcall(function() return g.HttpService:JSONDecode(result.Body) end)
+    if not ok2 or type(data) ~= "table" then return nil end
+    local version = data.Southwest_Florida_Hub_Version
+    if not version then return nil end
+    return tostring(version):gsub("%s+", "")
+end
 
-    local Frame = Instance.new("Frame")
-    Frame.Name = "ErrorMessage"
-    Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Frame.BackgroundTransparency = 0.3
-    Frame.BorderSizePixel = 0
-    Frame.Size = UDim2.new(0, 500, 0, 120)
-    Frame.Position = UDim2.new(0, 20, 0, 100)
-    Frame.Parent = NotificationGui
+local function Notify(msg, dur)
+    dur = dur or 5
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "CustomNotifyGui"
+    gui.ResetOnSpawn = false
+    gui.Parent = g.CoreGui
 
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 10)
-    UICorner.Parent = Frame
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Size = UDim2.new(0, 500, 0, 120)
+    frame.Position = UDim2.new(0, 20, 0, 100)
+    frame.Parent = gui
 
-    local Icon = Instance.new("ImageLabel")
-    Icon.Name = "ErrorIcon"
-    Icon.AnchorPoint = Vector2.new(0, 0.5)
-    Icon.BackgroundTransparency = 1
-    Icon.Position = UDim2.new(0, 15, 0.5, -25)
-    Icon.Size = UDim2.new(0, 50, 0, 50)
-    Icon.Image = "rbxasset://textures/ui/Emotes/ErrorIcon.png"
-    Icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    Icon.Parent = Frame
+    local icon = Instance.new("ImageLabel")
+    icon.BackgroundTransparency = 1
+    icon.Position = UDim2.new(0, 15, 0.5, -25)
+    icon.Size = UDim2.new(0, 50, 0, 50)
+    icon.Image = "rbxasset://textures/ui/Emotes/ErrorIcon.png"
+    icon.ImageTransparency = 1
+    icon.Parent = frame
 
-    local Label = Instance.new("TextLabel")
-    Label.Name = "ErrorText"
-    Label.BackgroundTransparency = 1
-    Label.Position = UDim2.new(0, 80, 0, 10)
-    Label.Size = UDim2.new(1, -90, 1, -20)
-    Label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json")
-    Label.Text = message
-    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Label.TextSize = 20
-    Label.TextWrapped = true
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    Label.TextYAlignment = Enum.TextYAlignment.Top
-    Label.Parent = Frame
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 80, 0, 10)
+    label.Size = UDim2.new(1, -90, 1, -20)
+    label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json")
+    label.Text = msg
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 20
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Top
+    label.TextTransparency = 1
+    label.Parent = frame
 
-    Frame.BackgroundTransparency = 1
-    Icon.ImageTransparency = 1
-    Label.TextTransparency = 1
-    TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
-    TweenService:Create(Icon, TweenInfo.new(0.3), {ImageTransparency = 0}):Play()
-    TweenService:Create(Label, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    g.TweenService:Create(frame, TweenInfo.new(0.3), { BackgroundTransparency = 0.3 }):Play()
+    g.TweenService:Create(icon, TweenInfo.new(0.3), { ImageTransparency = 0 }):Play()
+    g.TweenService:Create(label, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
 
-    task.delay(duration, function()
-        if Frame and Frame.Parent then
-            TweenService:Create(Frame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-            TweenService:Create(Icon, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
-            TweenService:Create(Label, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-            task.wait(0.35)
-            Frame:Destroy()
-            NotificationGui:Destroy()
-        end
+    task.delay(dur, function()
+        if not frame.Parent then return end
+        g.TweenService:Create(frame, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+        g.TweenService:Create(icon, TweenInfo.new(0.3), { ImageTransparency = 1 }):Play()
+        g.TweenService:Create(label, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+        task.wait(0.35)
+        gui:Destroy()
     end)
 end
 
-task.spawn(function()
-    while getgenv().ConstantUpdate_Checker_Live do
-        task.wait(1)
-
-        local success, latestVersionInfo = pcall(function()
-            local versionJson = game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Script_Versions_JSON.json?cachebust=" .. tick())
-            return HttpService:JSONDecode(versionJson)
-        end)
-
-        if success and latestVersionInfo then
-            if Script_Version ~= latestVersionInfo.Southwest_Florida_Hub_Version then
-                getgenv().ConstantUpdate_Checker_Live = false
-                Notify("[SWFL HUB]: do NOT rejoin! An update is now out! Update version: "..tostring(latestVersionInfo.Southwest_Florida_Hub_Version).." | re-executing automatically...", 30)
-                getgenv().SouthwestFlorida_Hub_Executed = false
-                wait(3)
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Southwest_Florida_BETA.lua'))()
+g.swfl_updater_running = g.swfl_updater_running or false
+g.swfl_updater_thread_id = (g.swfl_updater_thread_id or 0) + 1
+local thread_id = g.swfl_updater_thread_id
+if not g.swfl_updater_running then
+    g.swfl_updater_running = true
+    task.spawn(function()
+        while g.swfl_updater_running and thread_id == g.swfl_updater_thread_id do
+            task.wait(20)
+            local local_version = clean(tostring(getgenv().Script_Version))
+            if local_version == "" then continue end
+            local remote_version = swfl_get_version()
+            if not remote_version or remote_version == "" then continue end
+            if remote_version ~= local_version then
+                g.swfl_updater_running = false
+                Notify("[UPDATE DETECTED]:\nLocal: " .. local_version .. "\nServer: " .. remote_version .. "\nReloading...", 6)
+                task.wait(0.6)
+                g.SouthwestFlorida_Hub_Executed = false
+                getgenv().Script_Version = nil
+                pcall(function()
+                    loadstring(game:HttpGet(script_url .. "?cache=" .. tostring(os.clock())))()
+                end)
                 break
             end
         end
-    end
-end)
+    end)
+end
