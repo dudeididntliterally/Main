@@ -2095,3 +2095,111 @@ Callback = function()
     if getgenv().GET_LOADED_IY then return end
     loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
 end})
+wait(0.25)
+local function print_bytes(label, s)
+    local bytes = {}
+    for i = 1, #s do
+        table.insert(bytes, string.byte(s, i))
+    end
+    print(label .. ": " .. table.concat(bytes, ","))
+end
+local function clean(s) return s:gsub("[%c%z%s]", ""):gsub("[^\32-\126]", "") end
+local script_url = "https://raw.githubusercontent.com/dudeididntliterally/Main/refs/heads/main/Experiences/16625391970.lua"
+local version_url = "https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Script_Versions_JSON.json"
+local function ws_get_version()
+    local http_req = request or http_request or (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request)
+    if not http_req then return nil end
+    local ok, result = pcall(function()
+        return http_req({
+            Url = version_url .. "?cache=" .. tostring(os.clock()),
+            Method = "GET",
+            Headers = { ["Content-Type"] = "application/json" }
+        })
+    end)
+
+    if not ok or not result or result.StatusCode ~= 200 then return nil end
+    local ok2, data = pcall(function() return g.HttpService:JSONDecode(result.Body) end)
+    if not ok2 or type(data) ~= "table" then return nil end
+    local version = data.NewSmithRP_Hub_Version
+    if not version then return nil end
+    return tostring(version):gsub("%s+", "")
+end
+
+local function Notify(msg, dur)
+    dur = dur or 5
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "CustomNotifyGui"
+    gui.ResetOnSpawn = false
+    gui.Parent = g.CoreGui
+
+    local frame = Instance.new("Frame")
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Size = UDim2.new(0, 500, 0, 120)
+    frame.Position = UDim2.new(0, 20, 0, 100)
+    frame.Parent = gui
+
+    local icon = Instance.new("ImageLabel")
+    icon.BackgroundTransparency = 1
+    icon.Position = UDim2.new(0, 15, 0.5, -25)
+    icon.Size = UDim2.new(0, 50, 0, 50)
+    icon.Image = "rbxasset://textures/ui/Emotes/ErrorIcon.png"
+    icon.ImageTransparency = 1
+    icon.Parent = frame
+
+    local label = Instance.new("TextLabel")
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 80, 0, 10)
+    label.Size = UDim2.new(1, -90, 1, -20)
+    label.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json")
+    label.Text = msg
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextSize = 20
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.TextYAlignment = Enum.TextYAlignment.Top
+    label.TextTransparency = 1
+    label.Parent = frame
+
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
+    g.TweenService:Create(frame, TweenInfo.new(0.3), { BackgroundTransparency = 0.3 }):Play()
+    g.TweenService:Create(icon, TweenInfo.new(0.3), { ImageTransparency = 0 }):Play()
+    g.TweenService:Create(label, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+
+    task.delay(dur, function()
+        if not frame.Parent then return end
+        g.TweenService:Create(frame, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+        g.TweenService:Create(icon, TweenInfo.new(0.3), { ImageTransparency = 1 }):Play()
+        g.TweenService:Create(label, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+        task.wait(0.35)
+        gui:Destroy()
+    end)
+end
+
+g.lta_updater_running = g.lta_updater_running or false
+g.lta_updater_thread_id = (g.lta_updater_thread_id or 0) + 1
+local thread_id = g.lta_updater_thread_id
+if not g.lta_updater_running then
+    g.lta_updater_running = true
+    task.spawn(function()
+        while g.lta_updater_running and thread_id == g.lta_updater_thread_id do
+            task.wait(20)
+            local local_version = clean(tostring(getgenv().Script_Version))
+            if local_version == "" then continue end
+            local remote_version = ws_get_version()
+            if not remote_version or remote_version == "" then continue end
+            if remote_version ~= local_version then
+                g.lta_updater_running = false
+                Notify("[UPDATE DETECTED]:\nLocal: " .. local_version .. "\nServer: " .. remote_version .. "\nReloading...", 6)
+                task.wait(0.6)
+                getgenv().Script_Version = nil
+                getgenv().New_Smith_RP_Hub_Loaded = false
+                pcall(function()
+                    loadstring(game:HttpGet(script_url .. "?cache=" .. tostring(os.clock())))()
+                end)
+                break
+            end
+        end
+    end)
+end
