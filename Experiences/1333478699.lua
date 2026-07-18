@@ -7,6 +7,7 @@ if getgenv().TheLanesScript_Hub_Loaded then
     end
 end
 
+local g = getgenv()
 getgenv().TheLanesScript_Hub_Loaded = true
 local NotifyLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Notify_Lib.lua"))()
 getgenv().notify = getgenv().notify or function(notif_type, msg, duration) NotifyLib:External_Notification(tostring(notif_type), tostring(msg), tonumber(duration)) end
@@ -54,7 +55,6 @@ local set_clip_board = safe_func(
 )
 getgenv().TheLanes_Debugging_Mode_Enabled = getgenv().TheLanes_Debugging_Mode_Enabled or false
 getgenv().Flames_Bowling_Animations = {}
-
 local executor_string = nil
 local function executor_contains(substr)
     if typeof(executor_string) ~= "string" then
@@ -1203,10 +1203,7 @@ if not low_level_executor() then
 end
 wait(0.1)
 getgenv().launch_bowling_shot = function()
-    if low_level_executor() then
-        return getgenv().notify("Error", "Your executor cannot run this, no proper 'require' support.", 6)
-    end
-
+    if low_level_executor() then return getgenv().notify("Error", "Your executor cannot run this, no proper 'require' support.", 6) end
     local bowlingSignalsModule = require(getgenv().signals_module_script_for_bowling_folder)
     local bowlingSignals = bowlingSignalsModule.bowlingSignals
     local STAND_OFFSET = 0.08
@@ -1423,7 +1420,6 @@ getgenv().find_create_game_RF = function()
 end
 wait(0.1)
 if not getgenv().create_game_RF then task.spawn(function() getgenv().find_create_game_RF() end) end
-
 local function find_bowling_anims_folder()
     local cache = getgenv().bowling_animations_folder
     if cache and cache:IsA("Folder") then
@@ -1930,80 +1926,95 @@ Callback = function()
     getgenv().mod_arcade_high_score()
 end,})
 
-getgenv().RGB_Bowling_Ball = Tab_3:CreateToggle({
-Name = "RGB Bowling Ball",
-CurrentValue = getgenv().RGB_Bowling_Ball_Enabled or false,
-Flag = "BowlingBallSwitchingColorsNotFE",
-Callback = function(rgb_ball)
-    getgenv().RGB_Bowling_Ball_Enabled = rgb_ball
-    local function is_valid_rgb_ball(ball)
-        return ball and typeof(ball) == "Instance" and ball:IsA("BasePart") and ball.Name == "Ball" and ball.Parent and ball:IsDescendantOf(game)
+local function is_valid_instance(v) return v ~= nil and typeof(v) == "Instance" and v.Parent ~= nil and v:IsDescendantOf(game) end
+local function is_valid_rgb_ball(ball) return is_valid_instance(ball) and ball:IsA("BasePart") and ball.Name == "Ball" end
+local function get_ball_mesh(ball)
+    if not is_valid_rgb_ball(ball) then return nil end
+    return ball:FindFirstChildWhichIsA("SpecialMesh") or ball:FindFirstChildWhichIsA("MeshPart") or ball:FindFirstChildWhichIsA("MeshPart", true)
+end
+
+local function set_ball_visual_state(ball, enabled)
+    if not is_valid_rgb_ball(ball) then return end
+    local mesh = get_ball_mesh(ball)
+    if enabled then
+        pcall(function() ball.Transparency = 0 end)
+        if mesh then pcall(function() mesh.Transparency = 1 end) end
+    else
+        pcall(function() ball.Transparency = 1 end)
+        if mesh then pcall(function() mesh.Transparency = 0 end) end
     end
-    local function get_ball_mesh(ball)
-        if not is_valid_rgb_ball(ball) then
-            return nil
-        end
-        local mesh = ball:FindFirstChildWhichIsA("MeshPart")
-        if mesh then
-            return mesh
-        end
-        return ball:FindFirstChildWhichIsA("MeshPart", true)
+end
+
+local function stop_rgb_heartbeat(key)
+    if g._rgb_connections and g._rgb_connections[key] then
+        pcall(function() g._rgb_connections[key]:Disconnect() end)
+        g._rgb_connections[key] = nil
     end
-    local function set_ball_visual_state(ball, enabled)
-        if not is_valid_rgb_ball(ball) then
+end
+
+local function apply_rgb_heartbeat(ball, key, speed)
+    if not is_valid_rgb_ball(ball) then return end
+    stop_rgb_heartbeat(key)
+    g._rgb_connections = g._rgb_connections or {}
+    local hue = 0
+    g._rgb_connections[key] = RunService.Heartbeat:Connect(function(dt)
+        if not is_valid_rgb_ball(ball) or not g.RGB_Bowling_Ball_Enabled then
+            stop_rgb_heartbeat(key)
             return
         end
+        hue = (hue + dt * speed) % 1
+        local color = Color3.fromHSV(hue, 1, 1)
+        pcall(function() ball.Color = color end)
         local mesh = get_ball_mesh(ball)
-        if enabled then
-            pcall(function() ball.Transparency = 0 end)
-            if mesh then
-                pcall(function() mesh.Transparency = 1 end)
-            end
-        else
-            pcall(function() ball.Transparency = 1 end)
-            if mesh then
-                pcall(function() mesh.Transparency = 0 end)
-            end
+        if mesh and mesh:IsA("SpecialMesh") then
+            pcall(function() mesh.VertexColor = Vector3.new(color.R, color.G, color.B) end)
         end
-    end
+    end)
+end
 
+g.RGB_Bowling_Ball = Tab_3:CreateToggle({
+Name = "RGB Bowling Ball",
+CurrentValue = g.RGB_Bowling_Ball_Enabled or false,
+Flag = "BowlingBallSwitchingColorsNotFE",
+Callback = function(rgb_ball)
+    g.RGB_Bowling_Ball_Enabled = rgb_ball
     if rgb_ball then
         local last_target = nil
-        getgenv().FlamesLibrary.spawn("RGB_Bowling_Ball_Monitor", "spawn", function()
-            while getgenv().RGB_Bowling_Ball_Enabled == true do
+        g.FlamesLibrary.spawn("RGB_Bowling_Ball_Monitor", "spawn", function()
+            while g.RGB_Bowling_Ball_Enabled == true do
                 local target = is_valid_rgb_ball(current_ball) and current_ball or nil
                 if target ~= last_target then
                     if last_target then
+                        stop_rgb_heartbeat("RGB_Bowling_Ball_Conn")
                         set_ball_visual_state(last_target, false)
                     end
                     if target then
                         set_ball_visual_state(target, true)
-                        getgenv().flowrgb("RGB_Bowling_Ball_Conn", 1.5, target, true)
-                        getgenv().RGB_Bowling_Ball_LastTarget = target
+                        apply_rgb_heartbeat(target, "RGB_Bowling_Ball_Conn", 1.5)
+                        g.RGB_Bowling_Ball_LastTarget = target
                     else
-                        getgenv().flowrgb("RGB_Bowling_Ball_Conn", 1.5, nil, false)
-                        getgenv().RGB_Bowling_Ball_LastTarget = nil
+                        g.RGB_Bowling_Ball_LastTarget = nil
                     end
                     last_target = target
                 end
                 task.wait(0.2)
             end
-            if last_target then
+            stop_rgb_heartbeat("RGB_Bowling_Ball_Conn")
+            if last_target and is_valid_rgb_ball(last_target) then
                 set_ball_visual_state(last_target, false)
-                getgenv().RGB_Bowling_Ball_LastTarget = nil
             end
-            getgenv().flowrgb("RGB_Bowling_Ball_Conn", 0.6, nil, false)
+            g.RGB_Bowling_Ball_LastTarget = nil
         end)
     else
-        if getgenv().FlamesLibrary and getgenv().FlamesLibrary.disconnect then
-            getgenv().FlamesLibrary.disconnect("RGB_Bowling_Ball_Monitor")
+        if g.FlamesLibrary and g.FlamesLibrary.disconnect then
+            g.FlamesLibrary.disconnect("RGB_Bowling_Ball_Monitor")
         end
-        local fallback_ball = getgenv().RGB_Bowling_Ball_LastTarget or current_ball
-        if is_valid_rgb_ball(fallback_ball) then
-            set_ball_visual_state(fallback_ball, false)
+        stop_rgb_heartbeat("RGB_Bowling_Ball_Conn")
+        local fallback = g.RGB_Bowling_Ball_LastTarget or current_ball
+        if is_valid_rgb_ball(fallback) then
+            set_ball_visual_state(fallback, false)
         end
-        getgenv().RGB_Bowling_Ball_LastTarget = nil
-        getgenv().flowrgb("RGB_Bowling_Ball_Conn", 0.6, nil, false)
+        g.RGB_Bowling_Ball_LastTarget = nil
     end
 end,})
 
@@ -2332,7 +2343,7 @@ Callback = function(bowling_strikes_easily)
             return getgenv().notify("Error", "We apologize, but, you cannot use this, your executor does not support: 'require'!", 12)
         else
             if not getgenv().notification_for_automatically_bowling_sent then
-                print("[src/shared/helpers/shop-helper.ts:17] Data transmitted successfully to version 0264277 (main)")
+                print("[src/shared/helpers/shop-helper.ts:17] Data transmitted successfully to version 62908c6 (main)")
                 getgenv().notification_for_automatically_bowling_sent = true
             end
         end
