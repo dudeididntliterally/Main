@@ -109,6 +109,10 @@ local scriptstoload = {
     ["NewSmith RP"] = {
         id = 16625391970,
         link = base_url .. "16625391970.lua"
+    },
+    ["Bilberry CityRP"] = {
+        id = 13972889842,
+        link = base_url .. "13972889842.lua"
     }
 }
 
@@ -262,7 +266,7 @@ Description = "Loads Nameless Admin FE.",
 Callback = function()
     local get_loaded = get_nameless_admin_loaded()
     if get_loaded then return end
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source.lua"))()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/ltseverydayyou/Nameless-Admin/main/Source.lua'))()
 end})
 
 local Excluded_IDs = {99644611200703, 99154507657228}
