@@ -8198,6 +8198,7 @@ g.enable_vehicle_noclip = g.enable_vehicle_noclip or function()
     g.vehiclefly_collisions = {}
     local car = get_vehicle()
     if not car then return end
+    if g.ToggleNoclip and typeof(g.ToggleNoclip) == "function" then g.ToggleNoclip(true) end
     for _, v in ipairs(car:GetDescendants()) do
         if v:IsA("BasePart") then
             g.vehiclefly_collisions[v] = v.CanCollide
@@ -8209,7 +8210,7 @@ end
 g.disable_vehicle_noclip = g.disable_vehicle_noclip or function()
     if not g.vehiclefly_noclip then return end
     g.vehiclefly_noclip = false
-
+    if g.ToggleNoclip and typeof(g.ToggleNoclip) == "function" then g.ToggleNoclip(false) end
     for part, state in pairs(g.vehiclefly_collisions) do
         if part and part.Parent then
             part.CanCollide = state
