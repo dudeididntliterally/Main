@@ -356,7 +356,7 @@ g.get_color_changed_Remote_Event = function()
 end
 wait(0.1)
 if not g.color_changed_RE_found then pcall(function() g.get_color_changed_Remote_Event() end) end
-
+if g.windows_screen_gui_found and g.windows_screen_gui_found:IsA("ScreenGui") then g.windows_screen_gui_found.Enabled = true end
 g.find_annoying_shop_GUI_Button = function()
 	local cache = g.shop_gui_button_top_left_corner
 	if cache and cache.Parent and cache:IsA("TextButton") then return cache end
