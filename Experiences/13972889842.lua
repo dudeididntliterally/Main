@@ -12,8 +12,8 @@ if not game:IsLoaded() then
 end
 
 local g = getgenv()
-local Raw_Version = "V1.1.7"
-g.Script_Version = tostring(Raw_Version).."-BillberryCityRP"
+local Raw_Version = "V1.1.9"
+getgenv().Script_Version = tostring(Raw_Version).."-BillberryCityRP"
 if not g.GlobalEnvironmentFramework_Initialized then
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Global_Environment.lua"))()
 	wait(0.1)
@@ -496,10 +496,22 @@ g.get_all_vehicles_folder = function(timeout)
 	local Start_Time = os.clock()
 	local Lowered_UserId = tostring(speaker.UserId):lower()
 	local User_Folder
+	local Is_Private_Server = g.is_localplayer_server_owner()
+
+	local Folder_Contains_Character = function(folder)
+		for _, v in ipairs(folder:GetDescendants()) do
+			if v:IsA("Humanoid") then return true end
+		end
+		return false
+	end
 
 	repeat
 		for _, v in ipairs(workspace:GetDescendants()) do
 			if v:IsA("Folder") and v.Name:lower():find(Lowered_UserId, 1, true) then
+				if Is_Private_Server ~= true and Folder_Contains_Character(v) then
+					continue
+				end
+
 				User_Folder = v
 				local stored_vehicles_folder = FuzzyFindDescendantWithClass(v, "vehicle", "Folder")
 				if stored_vehicles_folder then
@@ -552,9 +564,24 @@ g.get_vehicle = function()
 	return nil
 end
 
-g.find_car_colors_model = function()
-	local veh = g.get_vehicle()
-	if not veh or not veh:IsA("Model") then return g.notify("Error", "You do not have a Vehicle spawned or it is not a Model.", 3) end
+g.get_all_vehicles = function()
+	local vehicles_folder = g.get_all_vehicles_folder()
+	if not vehicles_folder then return {} end
+	local player_storage = vehicles_folder.Parent
+	if not player_storage then return {} end
+
+	local Found_Vehicles = {}
+	for _, v in ipairs(player_storage:GetDescendants()) do
+		if v:IsA("Model") and v:GetAttribute("playerid") == speaker.UserId then
+			table.insert(Found_Vehicles, v)
+		end
+	end
+
+	return Found_Vehicles
+end
+
+g.find_car_colors_model = function(veh)
+	if not veh or not veh:IsA("Model") then return nil end
 
 	for _, v in ipairs(veh:GetDescendants()) do
 		if v:IsA("Model") and v.Name:lower():find("car") and v.Name:lower():find("color") then
@@ -565,7 +592,7 @@ g.find_car_colors_model = function()
 	return nil
 end
 
-g.change_vehicle_color = function(new_color)
+g.change_vehicle_color = function(veh, new_color)
 	local color_changer_RE = g.color_changed_RE_found or g.get_color_changed_Remote_Event()
 	if not color_changer_RE or not color_changer_RE:IsA("RemoteEvent") then
 		g.rainbow_vehicle_toggled = false
@@ -573,14 +600,13 @@ g.change_vehicle_color = function(new_color)
 		if getgenv().Toggle_Rainbow_Vehicle_UI then getgenv().Toggle_Rainbow_Vehicle_UI:Set(false, false) end
 		return g.notify("Error", "RemoteEvent: ColorChanged was not found or is not a RemoteEvent.", 3)
 	end
-	local vehicle_body_color = g.find_car_colors_model()
+
+	local vehicle_body_color = g.find_car_colors_model(veh)
 	if not vehicle_body_color or not vehicle_body_color:IsA("Model") then
-		g.rainbow_vehicle_toggled = false
-		FlamesLibrary.disconnect("rainbow_vehicle")
-		if getgenv().Toggle_Rainbow_Vehicle_UI then getgenv().Toggle_Rainbow_Vehicle_UI:Set(false, false) end
-		return g.notify("Error", "Model: CarColors was not found or is not a Model.", 3)
+		return
 	end
-	if color_changer_RE and color_changer_RE:IsA("RemoteEvent") then color_changer_RE:FireServer(vehicle_body_color, new_color) end
+
+	color_changer_RE:FireServer(vehicle_body_color, new_color)
 end
 
 g.rainbow_vehicle_toggle_func = function(state)
@@ -590,7 +616,18 @@ g.rainbow_vehicle_toggle_func = function(state)
 			while g.rainbow_vehicle_toggled == true do
 				for _, color in ipairs(g.colors) do
 					if not g.rainbow_vehicle_toggled then break end
-					g.change_vehicle_color(color)
+					local all_vehicles = g.get_all_vehicles()
+					if #all_vehicles == 0 then
+						g.rainbow_vehicle_toggled = false
+						FlamesLibrary.disconnect("rainbow_vehicle")
+						if getgenv().Toggle_Rainbow_Vehicle_UI then getgenv().Toggle_Rainbow_Vehicle_UI:Set(false, false) end
+						return g.notify("Error", "No Vehicles found to apply Rainbow to.", 3)
+					end
+
+					for _, veh in ipairs(all_vehicles) do
+						if not g.rainbow_vehicle_toggled then break end
+						g.change_vehicle_color(veh, color)
+					end
 					task.wait(0)
 				end
 			end
@@ -1788,7 +1825,7 @@ end
 
 local Atlas = loadstring(game:HttpGet("https://raw.githubusercontent.com/dudeididntliterally/Backup_Repo/refs/heads/main/Atlas_UI.lua", true))()
 local UI = Atlas.new({
-	Name = "Flames Hub | Bilberry City RP",
+	Name = "Flames Hub | "..tostring(getgenv().Script_Version),
 	ConfigFolder = "Flames_Hub_Menu_Configuration",
 	Color = Color3.fromRGB(21, 103, 251),
 	Credit = "Flames Hub",
